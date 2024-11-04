@@ -1,0 +1,16 @@
+spring:
+  data:
+    mongodb:
+      host: localhost
+      port: 27017
+      database: frms_user_db
+
+app:
+  jwt:
+    secret: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+    expiration-in-ms: 604800000 # 7 days
+
+logging:
+  level:
+    org.springframework.security: DEBUG
+
