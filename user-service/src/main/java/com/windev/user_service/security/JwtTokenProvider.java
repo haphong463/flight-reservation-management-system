@@ -1,6 +1,7 @@
 package com.windev.user_service.security;
 
 import com.windev.user_service.model.User;
+import com.windev.user_service.repository.UserRepository;
 import io.jsonwebtoken.*;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
@@ -10,6 +11,7 @@ import java.util.Base64;
 import java.util.Date;
 import javax.crypto.SecretKey;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationCredentialsNotFoundException;
 import org.springframework.security.core.Authentication;
@@ -26,10 +28,10 @@ public class JwtTokenProvider {
     @Value("${app.jwt.expiration-in-ms}")
     private Long jwtExpirationInMs;
 
+
     // create jwt token
     public String generateToken(Authentication authentication) {
         UserDetails userPrincipal = (UserDetails) authentication.getPrincipal();
-
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + jwtExpirationInMs);
 
@@ -59,6 +61,23 @@ public class JwtTokenProvider {
                 .parseClaimsJws(token)
                 .getBody();
         return claims.getSubject();
+    }
+
+    public int getTokenVersionFromJwt(String token) {
+        Claims claims = Jwts.parser()
+                .setSigningKey(jwtSecret)
+                .parseClaimsJws(token)
+                .getBody();
+        return claims.get("tokenVersion", Integer.class);
+    }
+
+    public long getExpirationDuration(String token) {
+        try {
+            Claims claims = Jwts.parser().setSigningKey(jwtSecret).parseClaimsJws(token).getBody();
+            return claims.getExpiration().getTime() - System.currentTimeMillis();
+        } catch (Exception e) {
+            return 0;
+        }
     }
 
     private Key getSignKey() {

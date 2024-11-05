@@ -4,6 +4,19 @@ spring:
       host: localhost
       port: 27017
       database: frms_user_db
+  jackson:
+    serialization:
+      write-dates-as-timestamps: false
+  kafka:
+    notification:
+      topic: notification-topic
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.trusted.packages: "*"
+
 
 app:
   jwt:

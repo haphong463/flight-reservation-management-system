@@ -20,6 +20,9 @@ public class User {
     @Id
     private String id;
 
+    private String firstName;
+    private String lastName;
+
     private String username;
     private String password;
     private String email;
@@ -31,4 +34,5 @@ public class User {
     private Date createdAt;
     private Date updatedAt;
 
+    private boolean emailVerified;
 }
