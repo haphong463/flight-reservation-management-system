@@ -6,6 +6,11 @@ import com.windev.user_service.payload.request.PasswordResetRequest;
 import com.windev.user_service.payload.request.UpdateUserRequest;
 import com.windev.user_service.service.UserService;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -15,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/v1/users")
 @RestController
 @RequiredArgsConstructor
+@Tag(name = "User Management", description = "APIs for managing users")
 public class UserController {
 
     private final UserService userService;
@@ -23,9 +29,18 @@ public class UserController {
      * Update User
      * @param id
      * @param request
-     * @return
+     * @return user
      */
     @PatchMapping("{id}")
+    @Operation(
+            summary = "Update User Information",
+            description = "Updates detailed information of a user based on their ID.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "User updated successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody UpdateUserRequest request) {
         try {
             return new ResponseEntity<>(userService.updateUser(id, request), HttpStatus.OK);
@@ -40,6 +55,15 @@ public class UserController {
      * @return
      */
     @GetMapping
+    @Operation(
+            summary = "Retrieve All Users",
+            description = "Returns a paginated list of all users.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved user list"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> getAllUsers(Pageable pageable) {
         try {
             return new ResponseEntity<>(userService.getAllUsers(pageable), HttpStatus.OK);
@@ -54,6 +78,15 @@ public class UserController {
      * @return
      */
     @GetMapping("{id}")
+    @Operation(
+            summary = "Get User by ID",
+            description = "Retrieves detailed information of a user by their ID.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully retrieved user information"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> getUserById(@PathVariable String id) {
         try {
             return new ResponseEntity<>(userService.getUserById(id), HttpStatus.OK);
@@ -69,6 +102,15 @@ public class UserController {
      * @return
      */
     @PatchMapping("{id}/change-password")
+    @Operation(
+            summary = "Change User Password",
+            description = "Changes the password of a user based on their ID.",
+            security = @SecurityRequirement(name = "bearerAuth")
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password updated successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> changePassword(@PathVariable String id, @RequestBody PasswordChangeRequest request) {
         try {
             userService.changePassword(id, request);
@@ -84,6 +126,14 @@ public class UserController {
      * @return
      */
     @PostMapping("forgot-password")
+    @Operation(
+            summary = "Request Password Reset",
+            description = "Sends a password reset link to the user's email address."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset email sent"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> forgotPasswordRequest(@RequestBody PasswordForgotRequest request) {
         try {
             userService.forgotPasswordRequest(request.getEmail());
@@ -100,6 +150,14 @@ public class UserController {
      * @return
      */
     @PatchMapping("reset-password/{token}")
+    @Operation(
+            summary = "Reset User Password",
+            description = "Resets the password of a user using a valid reset token."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Password reset successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     public ResponseEntity<?> resetPassword(@PathVariable String token, @RequestBody PasswordResetRequest request) {
         try {
             userService.resetPassword(token, request);
