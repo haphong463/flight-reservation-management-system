@@ -40,4 +40,8 @@ public class CreateFlightRequest {
     @NotNull(message = "Number of Business seats is required")
     @Min(value = 1, message = "There must be at least one Business seat")
     private Integer businessSeats;
+
+    @NotNull(message = "Number of First seats is required")
+    @Min(value = 1, message = "There must be at least one Business seat")
+    private Integer firstSeats;
 }
