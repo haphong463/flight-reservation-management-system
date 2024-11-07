@@ -1,9 +1,9 @@
 package com.windev.user_service.controller;
 
-import com.windev.user_service.payload.request.PasswordChangeRequest;
-import com.windev.user_service.payload.request.PasswordForgotRequest;
-import com.windev.user_service.payload.request.PasswordResetRequest;
-import com.windev.user_service.payload.request.UpdateUserRequest;
+import com.windev.user_service.payload.request.password.PasswordChangeRequest;
+import com.windev.user_service.payload.request.password.PasswordForgotRequest;
+import com.windev.user_service.payload.request.password.PasswordResetRequest;
+import com.windev.user_service.payload.request.user_profile.UserProfileRequest;
 import com.windev.user_service.service.UserService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
@@ -41,7 +42,7 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "User updated successfully"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody UpdateUserRequest request) {
+    public ResponseEntity<?> updateUser(@PathVariable String id, @RequestBody @Valid UserProfileRequest request) {
         try {
             return new ResponseEntity<>(userService.updateUser(id, request), HttpStatus.OK);
         } catch (Exception e) {

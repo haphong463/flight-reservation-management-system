@@ -1,8 +1,8 @@
 package com.windev.user_service.controller;
 
 import com.windev.user_service.dto.UserDTO;
-import com.windev.user_service.payload.request.SigninRequest;
-import com.windev.user_service.payload.request.SignupRequest;
+import com.windev.user_service.payload.request.auth.SigninRequest;
+import com.windev.user_service.payload.request.auth.SignupRequest;
 import com.windev.user_service.payload.response.JwtResponse;
 import com.windev.user_service.payload.response.UserRegisteredResponse;
 import com.windev.user_service.service.AuthService;
@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,7 +40,7 @@ public class AuthController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping("/register")
-    public ResponseEntity<?> register(@RequestBody SignupRequest req) {
+    public ResponseEntity<?> register(@RequestBody @Valid SignupRequest req) {
         try {
             UserRegisteredResponse user = authService.register(req);
             return new ResponseEntity<>(user, HttpStatus.CREATED);
