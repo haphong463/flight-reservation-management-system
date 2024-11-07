@@ -15,7 +15,7 @@ public interface FlightMapper {
 
     FlightDetailDTO toDetailDTO(Flight flight);
 
-    FlightDetailDTO fromFlightDTOtoDetail(FlightDTO flightDTO);
+    Flight toEntity(FlightDetailDTO flightDetailDTO);
 
     void createFlightFromRequest(CreateFlightRequest request, @MappingTarget Flight flight);
 
