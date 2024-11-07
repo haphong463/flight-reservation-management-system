@@ -183,7 +183,6 @@ public class FlightServiceImpl implements FlightService {
     }
 
 
-    // ?                                            CẦN COI LẠI
     @Override
     public PaginatedResponse<FlightDTO> searchFlights(String origin, String destination, Date departureDate,
                                                       int pageNumber, int pageSize) {
@@ -204,7 +203,6 @@ public class FlightServiceImpl implements FlightService {
     }
 
 
-    // ?                                            CẦN COI LẠI
     @Override
     @Transactional
     public SeatDTO updateSeat(String flightId, String seatId, UpdateSeatRequest request) {
