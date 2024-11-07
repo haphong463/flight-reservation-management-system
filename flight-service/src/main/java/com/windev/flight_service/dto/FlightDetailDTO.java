@@ -1,15 +1,11 @@
 package com.windev.flight_service.dto;
 
-import com.windev.flight_service.entity.Seat;
 import java.util.Date;
 import java.util.List;
-import lombok.AllArgsConstructor;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
 @Data
-public class FlightDTO {
-
+public class FlightDetailDTO {
     private String id;
 
     private String flightNumber;
@@ -29,4 +25,6 @@ public class FlightDTO {
     private Date createdAt;
 
     private Date updatedAt;
+
+    private List<SeatDTO> seats;
 }
