@@ -47,25 +47,24 @@ public class SecurityConfig {
                                 .authenticationEntryPoint(authenticationEntryPoint)
 
                 )
-
                 .sessionManagement(session -> session
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-
                 .authorizeHttpRequests((authz) -> authz
                         .requestMatchers("/api/v1/auth/**",
+                                "/api/v1/users/forgot-password",
+                                "/api/v1/users/reset-password/{token}",
                                 "/swagger-resources",
                                 "/swagger-resources/**",
                                 "/configuration/ui",
                                 "/configuration/security",
                                 "/swagger-ui/**",
                                 "/webjars/**",
-                                "/v3/api-docs/**").permitAll()
+                                "/v3/api-docs/**",
+                                "/error"
+                                ).permitAll()
                         .anyRequest().authenticated()
                 )
-
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
-
-
                 .build();
     }
 }

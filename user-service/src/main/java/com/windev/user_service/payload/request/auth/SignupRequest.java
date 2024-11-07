@@ -1,6 +1,7 @@
 package com.windev.user_service.payload.request;
 
 import com.windev.user_service.model.Preferences;
+import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
@@ -22,6 +23,9 @@ public class SignupRequest {
             message = "Password must be 8-16 characters long, including uppercase and lowercase letters, numbers, and special characters."
     )
     private String password;
+
+    @Valid
+    private UpdateUserProfileRequest userProfileRequest;
 
     private Preferences preferences;
 }
