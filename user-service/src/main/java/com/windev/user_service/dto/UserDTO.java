@@ -2,6 +2,7 @@ package com.windev.user_service.dto;
 
 import com.windev.user_service.model.Preferences;
 import com.windev.user_service.model.Role;
+import com.windev.user_service.model.UserProfile;
 import java.util.Date;
 import java.util.List;
 import lombok.Data;
@@ -13,6 +14,7 @@ public class UserDTO {
     private String email;
     private List<Role> roles;
     private Preferences preferences;
+    private UserProfileDTO profile;
     private Date createdAt;
     private Date updatedAt;
 }
