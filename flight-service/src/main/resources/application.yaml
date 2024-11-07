@@ -13,8 +13,18 @@ spring:
     properties:
       hibernate:
         batch_versioned_data: true
+  kafka:
+    notification:
+      topic: notification-topic
+    bootstrap-servers: localhost:9092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.trusted.packages: "*"
 
 redis:
   host: localhost
   port: 6379
   time-to-leave: 3600000
+
