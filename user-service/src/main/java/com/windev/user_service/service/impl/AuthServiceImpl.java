@@ -1,14 +1,12 @@
 package com.windev.user_service.service.impl;
 
 import com.windev.user_service.dto.UserDTO;
+import com.windev.user_service.dto.UserProfileDTO;
 import com.windev.user_service.enums.EventType;
 import com.windev.user_service.mapper.UserMapper;
-import com.windev.user_service.model.BlacklistedToken;
-import com.windev.user_service.model.EmailVerificationToken;
-import com.windev.user_service.model.Role;
-import com.windev.user_service.model.User;
-import com.windev.user_service.payload.request.SigninRequest;
-import com.windev.user_service.payload.request.SignupRequest;
+import com.windev.user_service.model.*;
+import com.windev.user_service.payload.request.auth.SigninRequest;
+import com.windev.user_service.payload.request.auth.SignupRequest;
 import com.windev.user_service.payload.response.JwtResponse;
 import com.windev.user_service.payload.response.UserRegisteredResponse;
 import com.windev.user_service.repository.BlacklistedTokenRepository;
@@ -18,13 +16,13 @@ import com.windev.user_service.repository.UserRepository;
 import com.windev.user_service.security.JwtTokenProvider;
 import com.windev.user_service.service.AuthService;
 import com.windev.user_service.service.KafkaService;
+import com.windev.user_service.service.UserProfileService;
 import java.security.SecureRandom;
 import java.util.Date;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -55,6 +53,9 @@ public class AuthServiceImpl implements AuthService {
 
     private final EmailVerificationTokenRepository emailVerificationTokenRepository;
 
+    private final UserProfileService userProfileService;
+
+
     /**
      * Register An User
      *
@@ -84,14 +85,13 @@ public class AuthServiceImpl implements AuthService {
                 .username(req.getUsername())
                 .password(passwordEncoded)
                 .roles(List.of(userRole))
-                .createdAt(new Date())
-                .updatedAt(new Date())
                 .preferences(req.getPreferences())
                 .build();
 
         User createdUser = userRepository.save(user);
         log.info("register() --> user has been successfully registered: {}", createdUser);
 
+        userProfileService.createUserProfile(createdUser.getId(), req.getUserProfileRequest());
 
         /**
          * Store token into Email Verification Token schema
@@ -145,11 +145,18 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new RuntimeException("Username not found"));
 
-        return userMapper.toUserDTO(user);
+        UserProfileDTO userProfile = userProfileService.getUserProfile(user.getId());
+
+        UserDTO userDTO = userMapper.toUserDTO(user);
+
+        userDTO.setProfile(userProfile);
+
+        return userDTO;
     }
 
     /**
      * Log out
+     *
      * @param token
      */
     @Override
@@ -164,12 +171,13 @@ public class AuthServiceImpl implements AuthService {
 
     /**
      * Verify email
+     *
      * @param token
      */
     @Override
     public void verifyEmail(String token) {
         EmailVerificationToken emailVerificationToken = emailVerificationTokenRepository.findByToken(token)
-                        .orElseThrow(() -> new RuntimeException("Invalid token!!!"));
+                .orElseThrow(() -> new RuntimeException("Invalid token!!!"));
 
         /**
          * Check token is used

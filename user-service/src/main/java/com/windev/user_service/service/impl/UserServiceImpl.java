@@ -1,17 +1,19 @@
 package com.windev.user_service.service.impl;
 
 import com.windev.user_service.dto.UserDTO;
+import com.windev.user_service.dto.UserProfileDTO;
 import com.windev.user_service.enums.EventType;
 import com.windev.user_service.mapper.UserMapper;
 import com.windev.user_service.model.ForgotPasswordToken;
 import com.windev.user_service.model.User;
-import com.windev.user_service.payload.request.PasswordChangeRequest;
-import com.windev.user_service.payload.request.PasswordResetRequest;
-import com.windev.user_service.payload.request.UpdateUserRequest;
+import com.windev.user_service.payload.request.password.PasswordChangeRequest;
+import com.windev.user_service.payload.request.password.PasswordResetRequest;
+import com.windev.user_service.payload.request.user_profile.UserProfileRequest;
 import com.windev.user_service.payload.response.PaginatedResponse;
 import com.windev.user_service.repository.ForgotPasswordTokenRepository;
 import com.windev.user_service.repository.UserRepository;
 import com.windev.user_service.service.KafkaService;
+import com.windev.user_service.service.UserProfileService;
 import com.windev.user_service.service.UserService;
 import java.security.SecureRandom;
 import java.util.Date;
@@ -39,6 +41,9 @@ public class UserServiceImpl implements UserService {
 
     private final ForgotPasswordTokenRepository forgotPasswordTokenRepository;
 
+    private final UserProfileService userProfileService;
+
+
     @Override
     public PaginatedResponse<UserDTO> getAllUsers(Pageable pageable) {
         Page<User> pageUser = userRepository.findAll(pageable);
@@ -58,21 +63,29 @@ public class UserServiceImpl implements UserService {
         User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User with ID: " + id + " not found."));
 
+        UserProfileDTO userProfileDTO = userProfileService.getUserProfile(id);
+
+        UserDTO result = userMapper.toUserDTO(existingUser);
         log.info("getUserById() --> user detail: {}", existingUser);
-        return userMapper.toUserDTO(existingUser);
+        result.setProfile(userProfileDTO);
+        return result;
     }
 
     @Override
-    public UserDTO updateUser(String id, UpdateUserRequest request) {
+    public UserDTO updateUser(String id, UserProfileRequest request) {
         User existingUser = userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User with ID: " + id + " not found."));
 
-        userMapper.updateUserFromRequest(request, existingUser);
+//        userMapper.updateUserFromRequest(request, existingUser);
+        UserProfileDTO userProfileDTO = userProfileService.updateUserProfile(id, request);
 
-        User updatedUser = userRepository.save(existingUser);
-        log.info("updateUser() --> user with id: {} successfully updated: {}", id, updatedUser);
 
-        return userMapper.toUserDTO(existingUser);
+//        User updatedUser = userRepository.save(existingUser);
+//        log.info("updateUser() --> user with id: {} successfully updated: {}", id, updatedUser);
+
+        UserDTO result = userMapper.toUserDTO(existingUser);
+        result.setProfile(userProfileDTO);
+        return result;
     }
 
     @Override
@@ -98,7 +111,6 @@ public class UserServiceImpl implements UserService {
         }
 
         existingUser.setPassword(passwordEncoder.encode(request.getNewPassword()));
-        existingUser.setUpdatedAt(new Date());
         userRepository.save(existingUser);
         log.info("changePassword() --> password changed successfully!");
     }
@@ -134,7 +146,7 @@ public class UserServiceImpl implements UserService {
             throw new RuntimeException("Token has expired!");
         }
 
-        if(!request.getNewPassword().equals(request.getConfirmNewPassword())){
+        if (!request.getNewPassword().equals(request.getConfirmNewPassword())) {
             throw new RuntimeException("Password doesn't match confirm password");
         }
 
