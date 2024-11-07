@@ -7,7 +7,7 @@ import com.windev.user_service.mapper.UserMapper;
 import com.windev.user_service.model.EmailVerificationToken;
 import com.windev.user_service.model.Role;
 import com.windev.user_service.model.User;
-import com.windev.user_service.payload.request.SignupRequest;
+import com.windev.user_service.payload.request.auth.SignupRequest;
 import com.windev.user_service.payload.response.UserRegisteredResponse;
 import com.windev.user_service.repository.EmailVerificationTokenRepository;
 import com.windev.user_service.repository.RoleRepository;
