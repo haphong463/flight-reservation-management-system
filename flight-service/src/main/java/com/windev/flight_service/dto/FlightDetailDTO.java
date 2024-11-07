@@ -27,4 +27,6 @@ public class FlightDetailDTO {
     private Date updatedAt;
 
     private List<SeatDTO> seats;
+
+    private List<CrewDTO> crews;
 }

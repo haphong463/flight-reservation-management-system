@@ -4,12 +4,13 @@ import com.windev.flight_service.dto.FlightDTO;
 
 import com.windev.flight_service.dto.FlightDetailDTO;
 import com.windev.flight_service.dto.SeatDTO;
-import com.windev.flight_service.payload.request.CreateFlightRequest;
-import com.windev.flight_service.payload.request.UpdateFlightRequest;
-import com.windev.flight_service.payload.request.UpdateSeatRequest;
+import com.windev.flight_service.payload.request.flight.CreateFlightRequest;
+import com.windev.flight_service.payload.request.flight.UpdateFlightRequest;
+import com.windev.flight_service.payload.request.flight.UpdateFlightStatusRequest;
+import com.windev.flight_service.payload.request.seat.UpdateSeatRequest;
 import com.windev.flight_service.payload.response.PaginatedResponse;
 import java.util.Date;
-import org.springframework.data.domain.Pageable;
+import java.util.Set;
 
 public interface FlightService {
 
@@ -22,6 +23,8 @@ public interface FlightService {
 
     FlightDetailDTO updateFlight(String id, UpdateFlightRequest flight);
 
+    FlightDetailDTO updateFlightStatus(String id, UpdateFlightStatusRequest request);
+
     void deleteFlight(String id);
 
     PaginatedResponse<FlightDTO> searchFlights(String origin, String destination, Date departureDate, int pageNumber,
@@ -30,4 +33,6 @@ public interface FlightService {
     //                                  SEAT
     SeatDTO updateSeat(String flightId, String seatId, UpdateSeatRequest request);
 
+    //                                  CREW
+    FlightDetailDTO assignCrewToFlight(String flightId, Set<Long> crewIds);
 }

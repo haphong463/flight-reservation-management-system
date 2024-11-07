@@ -1,14 +1,12 @@
-package com.windev.flight_service.payload.request;
+package com.windev.flight_service.payload.request.flight;
 
-import jakarta.validation.constraints.Future;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
-import java.util.Date;
+import jakarta.validation.constraints.*;
 import lombok.Data;
+import java.util.Date;
 
 @Data
-public class UpdateFlightRequest {
+public class CreateFlightRequest {
+
     @NotBlank(message = "Flight number is required")
     @Size(max = 10, message = "Flight number must not exceed 10 characters")
     private String flightNumber;
@@ -33,5 +31,15 @@ public class UpdateFlightRequest {
     @Future(message = "Arrival time must be in the future")
     private Date arrivalTime;
 
-    private String status;
+    @NotNull(message = "Number of Economy seats is required")
+    @Min(value = 1, message = "There must be at least one Economy seat")
+    private Integer economySeats;
+
+    @NotNull(message = "Number of Business seats is required")
+    @Min(value = 1, message = "There must be at least one Business seat")
+    private Integer businessSeats;
+
+    @NotNull(message = "Number of First seats is required")
+    @Min(value = 1, message = "There must be at least one Business seat")
+    private Integer firstSeats;
 }

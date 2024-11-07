@@ -1,4 +1,4 @@
-package com.windev.flight_service.payload.request;
+package com.windev.flight_service.payload.request.seat;
 
 import lombok.AllArgsConstructor;
 import lombok.Data;

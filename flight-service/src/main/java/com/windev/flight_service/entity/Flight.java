@@ -50,6 +50,14 @@ public class Flight {
     @OneToMany(mappedBy = "flight", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<Seat> seats = new ArrayList<>();
 
+    @ManyToMany
+    @JoinTable(
+            name = "flight_crew",
+            joinColumns = @JoinColumn(name = "flight_id"),
+            inverseJoinColumns = @JoinColumn(name = "crew_id")
+    )
+    private List<Crew> crews = new ArrayList<>();
+
 
     @PrePersist
     public void onCreate(){

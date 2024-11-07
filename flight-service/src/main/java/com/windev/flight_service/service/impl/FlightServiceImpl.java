@@ -1,26 +1,32 @@
 package com.windev.flight_service.service.impl;
 
+import com.windev.flight_service.dto.CrewDTO;
 import com.windev.flight_service.dto.FlightDTO;
 import com.windev.flight_service.dto.FlightDetailDTO;
 import com.windev.flight_service.dto.SeatDTO;
+import com.windev.flight_service.entity.Crew;
 import com.windev.flight_service.entity.Flight;
 import com.windev.flight_service.entity.Seat;
 import com.windev.flight_service.enums.ClassType;
 import com.windev.flight_service.enums.EventType;
 import com.windev.flight_service.enums.FlightStatus;
+import com.windev.flight_service.exception.FlightNotFoundException;
+import com.windev.flight_service.exception.SeatNotBelongToFlightException;
+import com.windev.flight_service.exception.SeatNotFoundException;
 import com.windev.flight_service.mapper.FlightMapper;
 import com.windev.flight_service.mapper.SeatMapper;
-import com.windev.flight_service.payload.request.CreateFlightRequest;
-import com.windev.flight_service.payload.request.UpdateFlightRequest;
-import com.windev.flight_service.payload.request.UpdateSeatRequest;
+import com.windev.flight_service.payload.request.flight.CreateFlightRequest;
+import com.windev.flight_service.payload.request.flight.UpdateFlightRequest;
+import com.windev.flight_service.payload.request.flight.UpdateFlightStatusRequest;
+import com.windev.flight_service.payload.request.seat.UpdateSeatRequest;
 import com.windev.flight_service.payload.response.PaginatedResponse;
+import com.windev.flight_service.repository.CrewRepository;
 import com.windev.flight_service.repository.FlightRepository;
 import com.windev.flight_service.repository.SeatRepository;
 import com.windev.flight_service.service.FlightService;
 import com.windev.flight_service.service.cache.FlightCacheService;
 import com.windev.flight_service.service.kafka.FlightMessageQueue;
 import java.util.*;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
@@ -47,6 +53,9 @@ public class FlightServiceImpl implements FlightService {
     private final FlightCacheService flightCacheService;
 
     private final FlightMessageQueue queue;
+
+    private final CrewRepository crewRepository;
+
 
 
     /**
@@ -84,7 +93,7 @@ public class FlightServiceImpl implements FlightService {
         }
 
         Flight existingFlight = flightRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + id + " not found."));
 
         FlightDetailDTO result = flightMapper.toDetailDTO(existingFlight);
         flightCacheService.save(result);
@@ -169,7 +178,7 @@ public class FlightServiceImpl implements FlightService {
 
         if (existingFlight == null) {
             Flight flight = flightRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+                    .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + id + " not found."));
             existingFlight = flightMapper.toDetailDTO(flight);
         }
 
@@ -202,6 +211,18 @@ public class FlightServiceImpl implements FlightService {
         return result;
     }
 
+    @Override
+    public FlightDetailDTO updateFlightStatus(String id, UpdateFlightStatusRequest request) {
+        Flight existingFlight = flightRepository.findById(id)
+                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + id + " not found."));
+
+        existingFlight.setStatus(request.getStatus());
+
+        Flight savedFlight = flightRepository.save(existingFlight);
+
+        return flightMapper.toDetailDTO(savedFlight);
+    }
+
 
     @Override
     public void deleteFlight(String id) {
@@ -209,7 +230,7 @@ public class FlightServiceImpl implements FlightService {
 
         if (existingFlight == null) {
             Flight flight = flightRepository.findById(id)
-                    .orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+                    .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + id + " not found."));
             existingFlight = flightMapper.toDetailDTO(flight);
         }
 
@@ -218,6 +239,20 @@ public class FlightServiceImpl implements FlightService {
         flightCacheService.delete(id);
 
         queue.sendMessage(existingFlight, EventType.DELETE_FLIGHT.name());
+    }
+
+    @Override
+    public FlightDetailDTO assignCrewToFlight(String flightId, Set<Long> crewIds) {
+        Flight flight = flightRepository.findById(flightId)
+                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + flightId + " not found."));
+
+        List<Crew> crews = crewRepository.findAllByIdIn(crewIds);
+
+        flight.setCrews(crews);
+
+        Flight savedFlight = flightRepository.save(flight);
+
+        return flightMapper.toDetailDTO(savedFlight);
     }
 
 
@@ -245,13 +280,13 @@ public class FlightServiceImpl implements FlightService {
     @Transactional
     public SeatDTO updateSeat(String flightId, String seatId, UpdateSeatRequest request) {
         Flight existingFlight = flightRepository.findById(flightId)
-                .orElseThrow(() -> new RuntimeException("Flight with ID: " + flightId + " not found."));
+                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + flightId + " not found."));
 
         Seat existingSeat = seatRepository.findById(seatId)
-                .orElseThrow(() -> new RuntimeException("Seat with ID: " + seatId + " not found."));
+                .orElseThrow(() -> new SeatNotFoundException("Seat with ID: " + seatId + " not found."));
 
         if (!existingSeat.getFlight().getId().equals(flightId)) {
-            throw new RuntimeException("Seat with ID: " + seatId + " does not belong to Flight with ID: " + flightId);
+            throw new SeatNotBelongToFlightException("Seat with ID: " + seatId + " does not belong to Flight with ID: " + flightId);
         }
 
         if (request.getIsAvailable() != null) {
