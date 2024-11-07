@@ -1,6 +1,7 @@
-package com.windev.user_service.payload.request;
+package com.windev.user_service.payload.request.auth;
 
 import com.windev.user_service.model.Preferences;
+import com.windev.user_service.payload.request.user_profile.UserProfileRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -25,7 +26,7 @@ public class SignupRequest {
     private String password;
 
     @Valid
-    private UpdateUserProfileRequest userProfileRequest;
+    private UserProfileRequest userProfileRequest;
 
     private Preferences preferences;
 }

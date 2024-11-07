@@ -1,4 +1,4 @@
-package com.windev.user_service.payload.request;
+package com.windev.user_service.payload.request.auth;
 
 import lombok.Data;
 

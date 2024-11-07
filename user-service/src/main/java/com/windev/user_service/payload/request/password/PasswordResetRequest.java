@@ -1,4 +1,4 @@
-package com.windev.user_service.payload.request;
+package com.windev.user_service.payload.request.password;
 
 import jakarta.validation.constraints.Pattern;
 import lombok.Data;
