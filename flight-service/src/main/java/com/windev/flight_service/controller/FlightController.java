@@ -6,25 +6,39 @@ import com.windev.flight_service.payload.request.UpdateFlightRequest;
 import com.windev.flight_service.payload.request.UpdateSeatRequest;
 import com.windev.flight_service.payload.response.PaginatedResponse;
 import com.windev.flight_service.service.FlightService;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-
-import java.util.Date;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Pageable;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
-import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.*;
+
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+
+import java.util.Date;
+import lombok.RequiredArgsConstructor;
 
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("api/v1/flights")
+@Tag(name = "Flight Management", description = "APIs for managing flights")
 public class FlightController {
 
     private final FlightService flightService;
 
+    @Operation(summary = "Create a new flight")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "201", description = "Flight created successfully",
+                    content = @Content(schema = @Schema(implementation = FlightDTO.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping
     public ResponseEntity<?> createFlight(@RequestBody @Valid CreateFlightRequest request) {
         try {
@@ -34,34 +48,52 @@ public class FlightController {
         }
     }
 
+    @Operation(summary = "Get all flights with pagination")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of flights",
+                    content = @Content(schema = @Schema(implementation = PaginatedResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping
-    public ResponseEntity<?> getAllFlights(@RequestParam(defaultValue = "0") int pageNumber
-                                        , @RequestParam(defaultValue = "10") int pageSize) {
+    public ResponseEntity<?> getAllFlights(
+            @RequestParam(defaultValue = "0") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize) {
         try {
             PaginatedResponse<FlightDTO> flights = flightService.getAllFlights(pageNumber, pageSize);
             return new ResponseEntity<>(flights, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-
         }
     }
 
+    @Operation(summary = "Search for flights based on origin, destination, and departure date")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "List of flights matching search criteria",
+                    content = @Content(schema = @Schema(implementation = PaginatedResponse.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/search")
-    public ResponseEntity<?> searchFlights(@RequestParam String origin
-            , @RequestParam String destination
-            , @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date departureDate
-            , @RequestParam(defaultValue = "0") int pageNumber
-            , @RequestParam(defaultValue = "10") int pageSize) {
+    public ResponseEntity<?> searchFlights(
+            @Parameter(description = "Origin airport code") @RequestParam String origin,
+            @Parameter(description = "Destination airport code") @RequestParam String destination,
+            @Parameter(description = "Departure date in ISO format") @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) Date departureDate,
+            @RequestParam(defaultValue = "0") int pageNumber,
+            @RequestParam(defaultValue = "10") int pageSize) {
         try {
             PaginatedResponse<FlightDTO> flights = flightService.searchFlights(origin, destination, departureDate,
                     pageNumber, pageSize);
             return new ResponseEntity<>(flights, HttpStatus.OK);
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-
         }
     }
 
+    @Operation(summary = "Get flight details by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flight details",
+                    content = @Content(schema = @Schema(implementation = FlightDTO.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("{id}")
     public ResponseEntity<?> getOneFlight(@PathVariable String id) {
         try {
@@ -71,6 +103,11 @@ public class FlightController {
         }
     }
 
+    @Operation(summary = "Delete a flight by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "204", description = "Flight deleted successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @DeleteMapping("{id}")
     public ResponseEntity<?> deleteFlight(@PathVariable String id) {
         try {
@@ -81,6 +118,12 @@ public class FlightController {
         }
     }
 
+    @Operation(summary = "Update flight details by ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Flight updated successfully",
+                    content = @Content(schema = @Schema(implementation = FlightDTO.class))),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PutMapping("{id}")
     public ResponseEntity<?> updateFlight(@PathVariable String id, @RequestBody @Valid UpdateFlightRequest request) {
         try {
@@ -90,8 +133,16 @@ public class FlightController {
         }
     }
 
+    @Operation(summary = "Update seat information for a flight")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Seat updated successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PutMapping("/{flightId}/seat/{seatId}")
-    public ResponseEntity<?> updateSeat(@PathVariable String flightId, @PathVariable String seatId, @RequestBody @Valid UpdateSeatRequest request) {
+    public ResponseEntity<?> updateSeat(
+            @PathVariable String flightId,
+            @PathVariable String seatId,
+            @RequestBody @Valid UpdateSeatRequest request) {
         try {
             return new ResponseEntity<>(flightService.updateSeat(flightId, seatId, request), HttpStatus.OK);
         } catch (Exception e) {
