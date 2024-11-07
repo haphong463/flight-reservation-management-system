@@ -6,6 +6,7 @@ import com.windev.flight_service.dto.SeatDTO;
 import com.windev.flight_service.entity.Flight;
 import com.windev.flight_service.entity.Seat;
 import com.windev.flight_service.enums.ClassType;
+import com.windev.flight_service.enums.EventType;
 import com.windev.flight_service.enums.FlightStatus;
 import com.windev.flight_service.mapper.FlightMapper;
 import com.windev.flight_service.mapper.SeatMapper;
@@ -17,6 +18,7 @@ import com.windev.flight_service.repository.FlightRepository;
 import com.windev.flight_service.repository.SeatRepository;
 import com.windev.flight_service.service.FlightService;
 import com.windev.flight_service.service.cache.FlightCacheService;
+import com.windev.flight_service.service.kafka.FlightMessageQueue;
 import java.util.*;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
@@ -43,6 +45,8 @@ public class FlightServiceImpl implements FlightService {
     private final SeatMapper seatMapper;
 
     private final FlightCacheService flightCacheService;
+
+    private final FlightMessageQueue queue;
 
 
     /**
@@ -153,33 +157,67 @@ public class FlightServiceImpl implements FlightService {
 
         flightCacheService.save(result);
 
+        queue.sendMessage(result, EventType.NEW_FLIGHT.name());
+
         return result;
     }
 
     @Override
     @Transactional
     public FlightDetailDTO updateFlight(String id, UpdateFlightRequest request) {
-        Flight existingFlight = flightRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+        FlightDetailDTO existingFlight = flightCacheService.findById(id);
 
-
-        flightMapper.updateFlightFromRequest(request, existingFlight);
-
-        if (request.getStatus() != null) {
-            existingFlight.setStatus(request.getStatus());
+        if (existingFlight == null) {
+            Flight flight = flightRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+            existingFlight = flightMapper.toDetailDTO(flight);
         }
 
-        Flight updatedFlight = flightRepository.save(existingFlight);
-        return flightMapper.toDetailDTO(updatedFlight);
+        Flight flightToUpdate = flightMapper.toEntity(existingFlight);
+
+        flightMapper.updateFlightFromRequest(request, flightToUpdate);
+
+        if (request.getStatus() != null) {
+            flightToUpdate.setStatus(request.getStatus());
+        }
+
+        for (Seat seat : flightToUpdate.getSeats()) {
+            seat.setFlight(flightToUpdate);
+        }
+
+        Flight updatedFlight = flightRepository.save(flightToUpdate);
+
+        FlightDetailDTO result = flightMapper.toDetailDTO(updatedFlight);
+
+        /**
+         * UPDATE IN REDIS
+         */
+        flightCacheService.update(result);
+
+        /**
+         * SEND MESSAGE TO NOTIFICATION TOPIC
+         */
+        queue.sendMessage(result, EventType.EDIT_FLIGHT.name());
+
+        return result;
     }
 
 
     @Override
     public void deleteFlight(String id) {
-        Flight existingFlight =
-                flightRepository.findById(id).orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+        FlightDetailDTO existingFlight = flightCacheService.findById(id);
 
-        flightRepository.delete(existingFlight);
+        if (existingFlight == null) {
+            Flight flight = flightRepository.findById(id)
+                    .orElseThrow(() -> new RuntimeException("Flight with ID: " + id + " not found."));
+            existingFlight = flightMapper.toDetailDTO(flight);
+        }
+
+        flightRepository.deleteById(id);
+
+        flightCacheService.delete(id);
+
+        queue.sendMessage(existingFlight, EventType.DELETE_FLIGHT.name());
     }
 
 
