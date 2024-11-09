@@ -7,10 +7,6 @@ import java.util.Date;
 @Data
 public class CreateFlightRequest {
 
-    @NotBlank(message = "Flight number is required")
-    @Size(max = 10, message = "Flight number must not exceed 10 characters")
-    private String flightNumber;
-
     @NotBlank(message = "Airline is required")
     @Size(max = 100, message = "Airline must not exceed 100 characters")
     private String airline;

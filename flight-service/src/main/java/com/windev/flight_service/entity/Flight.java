@@ -18,7 +18,7 @@ public class Flight {
     @Id
     private String id;
 
-    @Length(max = 10)
+    @Length(max = 25)
     private String flightNumber;
 
     @Length(max = 100)
@@ -64,19 +64,20 @@ public class Flight {
 
 
     @PrePersist
-    public void onCreate(){
-        if(id == null || id.isEmpty()){
-            id = UUID.randomUUID().toString();
-        }
-        if(status == null || status.isEmpty()){
-            status = FlightStatus.ON_TIME.name();
-        }
+    public void onCreate() {
+        id = UUID.randomUUID().toString();
+        status = FlightStatus.ON_TIME.name();
+        flightNumber = this.generateFlightNumber();
         createdAt = new Date();
         updatedAt = new Date();
     }
 
     @PreUpdate
-    public void onUpdate(){
+    public void onUpdate() {
         updatedAt = new Date();
+    }
+
+    private String generateFlightNumber() {
+        return "FL-" + System.currentTimeMillis();
     }
 }

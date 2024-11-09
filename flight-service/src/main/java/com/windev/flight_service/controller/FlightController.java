@@ -135,6 +135,11 @@ public class FlightController {
 
     }
 
+    @Operation(summary = "Assign crews to flight")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully assigned crews to flight"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping("/assign/{flightId}")
     public ResponseEntity<FlightDetailDTO> assignCrewsToFlight(@PathVariable String flightId,
                                                                @RequestParam Set<Long> crewIds){
@@ -142,6 +147,11 @@ public class FlightController {
         return ResponseEntity.ok(flightDTO);
     }
 
+    @Operation(summary = "Remove crews from flight")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Successfully removed crews from flight"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @PostMapping("/remove/{flightId}")
     public ResponseEntity<FlightDetailDTO> removeCrewsFromFlight(@PathVariable String flightId,
                                                          @RequestParam Set<Long> crewIds){
