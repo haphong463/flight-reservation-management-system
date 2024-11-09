@@ -1,12 +1,9 @@
 package com.windev.flight_service.entity;
 
+import com.windev.flight_service.enums.FlightStatus;
 import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.List;
-import jdk.jfr.Timestamp;
+import java.util.*;
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import org.hibernate.validator.constraints.Length;
@@ -56,11 +53,24 @@ public class Flight {
             joinColumns = @JoinColumn(name = "flight_id"),
             inverseJoinColumns = @JoinColumn(name = "crew_id")
     )
-    private List<Crew> crews = new ArrayList<>();
+    private Set<Crew> crews = new HashSet<>();
+
+    @ManyToOne
+    @JoinColumn(
+            name = "airplane_id",
+            nullable = false
+    )
+    private Airplane airplane;
 
 
     @PrePersist
     public void onCreate(){
+        if(id == null || id.isEmpty()){
+            id = UUID.randomUUID().toString();
+        }
+        if(status == null || status.isEmpty()){
+            status = FlightStatus.ON_TIME.name();
+        }
         createdAt = new Date();
         updatedAt = new Date();
     }

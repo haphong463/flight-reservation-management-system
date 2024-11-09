@@ -1,12 +1,10 @@
 package com.windev.flight_service.entity;
 
 import jakarta.persistence.*;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import java.util.Date;
 
 @Entity
 @Table(name = "crews")
@@ -52,8 +50,8 @@ public class Crew {
     @Temporal(TemporalType.TIMESTAMP)
     private Date updatedAt;
 
-    @ManyToMany(mappedBy = "crews", cascade = CascadeType.ALL)
-    private List<Flight> flights = new ArrayList<>();
+    @ManyToMany(mappedBy = "crews")
+    private Set<Flight> flights = new HashSet<>();
 
     @PrePersist
     public void onCreate() {
