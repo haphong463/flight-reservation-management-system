@@ -1,18 +1,15 @@
 package com.windev.flight_service.service.impl;
 
-import com.windev.flight_service.dto.CrewDTO;
+import com.windev.flight_service.dto.CrewWithFlightsDTO;
 import com.windev.flight_service.dto.FlightDTO;
 import com.windev.flight_service.dto.FlightDetailDTO;
 import com.windev.flight_service.dto.SeatDTO;
-import com.windev.flight_service.entity.Crew;
-import com.windev.flight_service.entity.Flight;
-import com.windev.flight_service.entity.Seat;
+import com.windev.flight_service.entity.*;
 import com.windev.flight_service.enums.ClassType;
 import com.windev.flight_service.enums.EventType;
 import com.windev.flight_service.enums.FlightStatus;
-import com.windev.flight_service.exception.FlightNotFoundException;
-import com.windev.flight_service.exception.SeatNotBelongToFlightException;
-import com.windev.flight_service.exception.SeatNotFoundException;
+import com.windev.flight_service.exception.*;
+import com.windev.flight_service.mapper.CrewMapper;
 import com.windev.flight_service.mapper.FlightMapper;
 import com.windev.flight_service.mapper.SeatMapper;
 import com.windev.flight_service.payload.request.flight.CreateFlightRequest;
@@ -20,12 +17,15 @@ import com.windev.flight_service.payload.request.flight.UpdateFlightRequest;
 import com.windev.flight_service.payload.request.flight.UpdateFlightStatusRequest;
 import com.windev.flight_service.payload.request.seat.UpdateSeatRequest;
 import com.windev.flight_service.payload.response.PaginatedResponse;
+import com.windev.flight_service.repository.AirplaneRepository;
 import com.windev.flight_service.repository.CrewRepository;
 import com.windev.flight_service.repository.FlightRepository;
 import com.windev.flight_service.repository.SeatRepository;
 import com.windev.flight_service.service.FlightService;
+import com.windev.flight_service.service.cache.CrewCacheService;
 import com.windev.flight_service.service.cache.FlightCacheService;
 import com.windev.flight_service.service.kafka.FlightMessageQueue;
+import com.windev.flight_service.util.DateUtil;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -34,6 +34,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,32 +42,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 @RequiredArgsConstructor
 public class FlightServiceImpl implements FlightService {
-
     private final FlightRepository flightRepository;
-
     private final FlightMapper flightMapper;
-
     private final SeatRepository seatRepository;
-
     private final SeatMapper seatMapper;
-
     private final FlightCacheService flightCacheService;
-
     private final FlightMessageQueue queue;
-
     private final CrewRepository crewRepository;
-
-
+    private final CrewCacheService crewCacheService;
+    private final CrewMapper crewMapper;
+    private final AirplaneRepository airplaneRepository;
 
     /**
-     *
      * @param pageNumber
      * @param pageSize
      * @return
      */
     @Override
     public PaginatedResponse<FlightDTO> getAllFlights(int pageNumber, int pageSize) {
-        Pageable pageable = PageRequest.of(pageNumber,pageSize);
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
         Page<Flight> flightPage
                 = flightRepository.findAll(pageable);
@@ -102,61 +96,31 @@ public class FlightServiceImpl implements FlightService {
 
     @Override
     public FlightDetailDTO createFlight(CreateFlightRequest request) {
+        Airplane airplane = airplaneRepository.findById(request.getAirplaneId())
+                .orElseThrow(() -> new AirplaneNotFoundException("Airplane with ID: " + request.getAirplaneId() +
+                        " not found."));
+
         Flight newFlight = new Flight();
-        newFlight.setId(UUID.randomUUID().toString());
-        /**
-         * Map từ createFlightRequest vào entity
-         */
+        newFlight.setAirplane(airplane);
         flightMapper.createFlightFromRequest(request, newFlight);
 
-        /**
-         * Set status cho flight khi vừa tạo là: ON TIME
-         */
-        newFlight.setStatus(FlightStatus.ON_TIME.name());
 
         Flight savedFlight = flightRepository.save(newFlight);
 
-
-        List<Seat> economySeats = IntStream.rangeClosed(1, request.getEconomySeats())
-                .mapToObj(i -> {
-                    Seat seat = new Seat();
-                    seat.setSeatNumber("E" + i);
-                    seat.setType(ClassType.ECONOMY.name());
-                    seat.setIsAvailable(true);
-                    seat.setPrice(determineSeatPrice(ClassType.ECONOMY.name()));
-                    seat.setFlight(savedFlight);
-                    return seat;
-                })
-                .toList();
-
-        List<Seat> businessSeats = IntStream.rangeClosed(1, request.getBusinessSeats())
-                .mapToObj(i -> {
-                    Seat seat = new Seat();
-                    seat.setSeatNumber("B" + i);
-                    seat.setType(ClassType.BUSINESS.name());
-                    seat.setIsAvailable(true);
-                    seat.setPrice(determineSeatPrice(ClassType.BUSINESS.name()));
-                    seat.setFlight(savedFlight);
-                    return seat;
-                })
-                .toList();
-
-        List<Seat> firstSeats = IntStream.rangeClosed(1, request.getFirstSeats())
-                .mapToObj(i -> {
-                    Seat seat = new Seat();
-                    seat.setSeatNumber("F" + i);
-                    seat.setType(ClassType.FIRST.name());
-                    seat.setIsAvailable(true);
-                    seat.setPrice(determineSeatPrice(ClassType.FIRST.name()));
-                    seat.setFlight(savedFlight);
-                    return seat;
-                })
-                .toList();
-
         List<Seat> allSeats = new ArrayList<>();
-        allSeats.addAll(economySeats);
-        allSeats.addAll(businessSeats);
-        allSeats.addAll(firstSeats);
+
+        for(SeatConfig config : airplane.getSeatConfigs()){
+            List<Seat> seats = IntStream.rangeClosed(1,config.getSeatCount()).mapToObj(value -> {
+                return Seat.builder()
+                        .price(determineSeatPrice(config.getSeatClass()))
+                        .type(config.getSeatClass())
+                        .seatNumber(config.getSeatClass().charAt(0) + String.valueOf(value))
+                        .isAvailable(true)
+                        .flight(savedFlight)
+                        .build();
+            }).toList();
+            allSeats.addAll(seats);
+        }
 
         seatRepository.saveAll(allSeats);
 
@@ -248,11 +212,77 @@ public class FlightServiceImpl implements FlightService {
 
         List<Crew> crews = crewRepository.findAllByIdIn(crewIds);
 
-        flight.setCrews(crews);
+        if (crews.isEmpty()) {
+            throw new IllegalArgumentException("No valid crews found for the provided IDs.");
+        }
 
-        Flight savedFlight = flightRepository.save(flight);
+        Set<Crew> newCrews = new HashSet<>();
 
-        return flightMapper.toDetailDTO(savedFlight);
+        for (Crew crew : crews) {
+            if (!flight.getCrews().contains(crew)) {
+                newCrews.add(crew);
+            } else {
+                log.warn("Crew with ID: {} is already assigned to flight: {}", crew.getId(), flight.getFlightNumber());
+            }
+        }
+
+        if (newCrews.isEmpty()) {
+            log.info("All provided crews are already assigned to flight: {}", flight.getFlightNumber());
+        } else {
+            flight.getCrews().addAll(newCrews);
+            flightRepository.save(flight);
+
+            for (Crew crew : newCrews) {
+                updateCrewCacheWithFlight(crew.getId(), flight);
+            }
+
+        }
+
+        FlightDetailDTO result = flightMapper.toDetailDTO(flight);
+
+        flightCacheService.update(result);
+
+        return result;
+    }
+
+
+    @Override
+    public FlightDetailDTO removeCrewFromFlight(String flightId, Set<Long> crewIds) {
+        Flight flight = flightRepository.findById(flightId)
+                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + flightId + " not found."));
+
+        List<Crew> crews = crewRepository.findAllByIdIn(crewIds);
+
+        if (crews.isEmpty()) {
+            throw new IllegalArgumentException("No valid crews found for the provided IDs.");
+        }
+
+        Set<Crew> removeCrews = new HashSet<>();
+
+        for (Crew crew : crews) {
+            if (flight.getCrews().contains(crew)) {
+                removeCrews.add(crew);
+            } else {
+                log.warn("Crew with ID: {} is already assigned to flight: {}", crew.getId(), flight.getFlightNumber());
+            }
+        }
+
+        if(removeCrews.isEmpty()){
+            log.info("No crews were removed from flight: {}", flight.getFlightNumber());
+        }else{
+            flight.getCrews().removeAll(removeCrews);
+            flightRepository.save(flight);
+
+            for(Crew crew : removeCrews){
+                removeCrewCacheWithFlight(crew.getId(), flight);
+            }
+        }
+
+        FlightDetailDTO result = flightMapper.toDetailDTO(flight);
+
+        flightCacheService.update(result);
+
+        return result;
     }
 
 
@@ -260,9 +290,8 @@ public class FlightServiceImpl implements FlightService {
     public PaginatedResponse<FlightDTO> searchFlights(String origin, String destination, Date departureDate,
                                                       int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
-
-        Date startOfDay = getStartOfDay(departureDate);
-        Date endOfDay = getEndOfDay(departureDate);
+        Date startOfDay = DateUtil.getStartOfDay(departureDate);
+        Date endOfDay = DateUtil.getEndOfDay(departureDate);
 
         Page<Flight> flightPage = flightRepository.findByOriginAndDestinationAndDepartureTimeBetween(origin, destination, startOfDay, endOfDay, pageable);
         List<FlightDTO> list = flightPage.stream().map(flightMapper::toDTO).collect(Collectors.toList());
@@ -279,29 +308,30 @@ public class FlightServiceImpl implements FlightService {
     @Override
     @Transactional
     public SeatDTO updateSeat(String flightId, String seatId, UpdateSeatRequest request) {
-        Flight existingFlight = flightRepository.findById(flightId)
-                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + flightId + " not found."));
-
-        Seat existingSeat = seatRepository.findById(seatId)
-                .orElseThrow(() -> new SeatNotFoundException("Seat with ID: " + seatId + " not found."));
-
-        if (!existingSeat.getFlight().getId().equals(flightId)) {
-            throw new SeatNotBelongToFlightException("Seat with ID: " + seatId + " does not belong to Flight with ID: " + flightId);
-        }
-
-        if (request.getIsAvailable() != null) {
-            existingSeat.setIsAvailable(request.getIsAvailable());
-        }
-        if (request.getPrice() != null) {
-            existingSeat.setPrice(request.getPrice());
-        }
-        if (request.getType() != null) {
-            existingSeat.setType(request.getType());
-        }
-
-        seatRepository.save(existingSeat);
-
-        return seatMapper.toDTO(existingSeat);
+//        Flight existingFlight = flightRepository.findById(flightId)
+//                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + flightId + " not found."));
+//
+//        Seat existingSeat = seatRepository.findById(seatId)
+//                .orElseThrow(() -> new SeatNotFoundException("Seat with ID: " + seatId + " not found."));
+//
+//        if (!existingSeat.getFlight().getId().equals(flightId)) {
+//            throw new SeatNotBelongToFlightException("Seat with ID: " + seatId + " does not belong to Flight with ID: " + flightId);
+//        }
+//
+//        if (request.getIsAvailable() != null) {
+//            existingSeat.setIsAvailable(request.getIsAvailable());
+//        }
+//        if (request.getPrice() != null) {
+//            existingSeat.setPrice(request.getPrice());
+//        }
+//        if (request.getType() != null) {
+//            existingSeat.setType(request.getType());
+//        }
+//
+//        seatRepository.save(existingSeat);
+//
+//        return seatMapper.toDTO(existingSeat);
+        return null;
     }
 
     private Double determineSeatPrice(String seatClass) {
@@ -313,23 +343,40 @@ public class FlightServiceImpl implements FlightService {
         };
     }
 
-    private Date getStartOfDay(Date date) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        calendar.set(Calendar.HOUR_OF_DAY, 0);
-        calendar.set(Calendar.MINUTE, 0);
-        calendar.set(Calendar.SECOND, 0);
-        calendar.set(Calendar.MILLISECOND, 0);
-        return calendar.getTime();
+    private void updateCrewCacheWithFlight(Long crewId, Flight flight) {
+        CrewWithFlightsDTO crew = getCrewWithFlightsById(crewId);
+
+        FlightDTO flightDTO = flightMapper.toDTO(flight);
+
+        if (!crew.getFlights().contains(flightDTO)) {
+            crew.getFlights().add(flightDTO);
+            crewCacheService.update(crew);
+            log.info("Update cache for Crew ID: {} with Flight ID: {} ", crewId, flight.getId());
+        }
     }
 
-    private Date getEndOfDay(Date date) {
-        Calendar calendar = Calendar.getInstance();
-        calendar.setTime(date);
-        calendar.set(Calendar.HOUR_OF_DAY, 23);
-        calendar.set(Calendar.MINUTE, 59);
-        calendar.set(Calendar.SECOND, 59);
-        calendar.set(Calendar.MILLISECOND, 999);
-        return calendar.getTime();
+    private void removeCrewCacheWithFlight(Long crewId, Flight flight) {
+        CrewWithFlightsDTO crew = getCrewWithFlightsById(crewId);
+
+        FlightDTO flightDTO = flightMapper.toDTO(flight);
+        if (crew.getFlights().contains(flightDTO)) {
+            crew.getFlights().remove(flightDTO);
+            crewCacheService.update(crew);
+            log.info("Update cache for Crew ID: {} with Flight ID: {} ", crewId, flight.getId());
+        }else{
+            log.warn("Flight ID: {} not found in Crew ID: {} assignedFlights.", flight.getFlightNumber(), crewId);
+        }
+    }
+
+    private CrewWithFlightsDTO getCrewWithFlightsById(Long crewId) {
+        CrewWithFlightsDTO crew = crewCacheService.findById(String.valueOf(crewId));
+
+        if (crew == null) {
+            log.warn("Crew with ID: {} not found in cache. Fetching from repository.", crewId);
+            Crew existingCrew = crewRepository.findById(crewId)
+                    .orElseThrow(() -> new CrewNotFoundException("Crew with ID: " + crewId + " not found."));
+            crew = crewMapper.withFlightsDTO(existingCrew);
+        }
+        return crew;
     }
 }
