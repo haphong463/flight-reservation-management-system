@@ -14,7 +14,9 @@ public interface FlightMapper {
     FlightDTO toDTO(Flight flight);
 
     @Mapping(target = "crews", source = "crews")
+    @Mapping(target = "airplane", source = "airplane")
     FlightDetailDTO toDetailDTO(Flight flight);
+
 
     Flight toEntity(FlightDetailDTO flightDetailDTO);
 
