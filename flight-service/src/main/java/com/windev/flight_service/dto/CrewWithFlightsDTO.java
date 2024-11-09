@@ -5,7 +5,10 @@ import java.util.List;
 import lombok.Data;
 
 @Data
-public class CrewDTO {
+public class CrewWithFlightsDTO {
+
+    private Long id;
+
     private String code;
 
     private String firstName;
@@ -27,4 +30,6 @@ public class CrewDTO {
     private Date createdAt;
 
     private Date updatedAt;
+
+    private List<FlightDTO> flights;
 }

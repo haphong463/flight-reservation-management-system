@@ -28,5 +28,7 @@ public class FlightDetailDTO {
 
     private List<SeatDTO> seats;
 
+    private AirplaneDTO airplane;
+
     private List<CrewDTO> crews;
 }
