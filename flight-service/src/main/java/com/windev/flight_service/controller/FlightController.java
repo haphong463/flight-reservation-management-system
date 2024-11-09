@@ -135,11 +135,17 @@ public class FlightController {
 
     }
 
-
-
     @PostMapping("/assign/{flightId}")
-    public ResponseEntity<FlightDetailDTO> assignCrewToFlight(@PathVariable String flightId, @RequestParam Set<Long> crewIds){
+    public ResponseEntity<FlightDetailDTO> assignCrewsToFlight(@PathVariable String flightId,
+                                                               @RequestParam Set<Long> crewIds){
         FlightDetailDTO flightDTO = flightService.assignCrewToFlight(flightId, crewIds);
+        return ResponseEntity.ok(flightDTO);
+    }
+
+    @PostMapping("/remove/{flightId}")
+    public ResponseEntity<FlightDetailDTO> removeCrewsFromFlight(@PathVariable String flightId,
+                                                         @RequestParam Set<Long> crewIds){
+        FlightDetailDTO flightDTO = flightService.removeCrewFromFlight(flightId, crewIds);
         return ResponseEntity.ok(flightDTO);
     }
 }
