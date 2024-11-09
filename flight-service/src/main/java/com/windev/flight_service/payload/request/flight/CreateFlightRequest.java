@@ -31,15 +31,5 @@ public class CreateFlightRequest {
     @Future(message = "Arrival time must be in the future")
     private Date arrivalTime;
 
-    @NotNull(message = "Number of Economy seats is required")
-    @Min(value = 1, message = "There must be at least one Economy seat")
-    private Integer economySeats;
-
-    @NotNull(message = "Number of Business seats is required")
-    @Min(value = 1, message = "There must be at least one Business seat")
-    private Integer businessSeats;
-
-    @NotNull(message = "Number of First seats is required")
-    @Min(value = 1, message = "There must be at least one Business seat")
-    private Integer firstSeats;
+    private String airplaneId;
 }
