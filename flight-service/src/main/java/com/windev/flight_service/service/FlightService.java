@@ -1,5 +1,6 @@
 package com.windev.flight_service.service;
 
+import com.windev.flight_service.dto.CrewDTO;
 import com.windev.flight_service.dto.FlightDTO;
 
 import com.windev.flight_service.dto.FlightDetailDTO;
@@ -35,4 +36,7 @@ public interface FlightService {
 
     //                                  CREW
     FlightDetailDTO assignCrewToFlight(String flightId, Set<Long> crewIds);
+
+    FlightDetailDTO removeCrewFromFlight(String flightId, Set<Long> crewIds);
+
 }
