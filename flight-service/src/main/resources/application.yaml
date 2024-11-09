@@ -7,12 +7,17 @@ spring:
     username: postgres
     password: postgres
   jpa:
+#    defer-datasource-initialization: true
     hibernate:
       ddl-auto: update
     show-sql: true
     properties:
       hibernate:
         batch_versioned_data: true
+#  sql:
+#    init:
+#      mode: always
+
   kafka:
     notification:
       topic: notification-topic
