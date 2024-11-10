@@ -1,0 +1,27 @@
+server:
+  port: 8084
+
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5432/frms_payment_db
+    username: postgres
+    password: postgres
+  jpa:
+    #    defer-datasource-initialization: true
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+#    properties:
+#      hibernate:
+#        batch_versioned_data: true
+#  sql:
+#    init:
+#      mode: always
+
+  kafka:
+    consumer:
+      bootstrap-servers: localhost:9092
+      group-id: payment-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
