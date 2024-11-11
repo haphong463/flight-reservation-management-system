@@ -2,6 +2,7 @@ package com.windev.booking_service.controller;
 
 
 import com.windev.booking_service.model.Booking;
+import com.windev.booking_service.payload.BookingWithPaymentResponse;
 import com.windev.booking_service.payload.CreateBookingRequest;
 import com.windev.booking_service.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,16 +25,13 @@ public class BookingController {
     }
 
     @GetMapping("/{bookingId}")
-    public ResponseEntity<Booking> getBookingById(@PathVariable String bookingId) {
-        return bookingService.getBookingById(bookingId)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+    public ResponseEntity<BookingWithPaymentResponse> getBookingById(@PathVariable String bookingId) {
+        return ResponseEntity.ok().body(bookingService.getBookingById(bookingId));
     }
 
     @GetMapping
-    public ResponseEntity<List<Booking>> getAllBookings() {
-        List<Booking> bookings = bookingService.getAllBookings();
-        return ResponseEntity.ok(bookings);
+    public ResponseEntity<List<BookingWithPaymentResponse>> getAllBookings() {
+        return ResponseEntity.ok().body(bookingService.getAllBookings());
     }
 
     @PutMapping("/{bookingId}")

@@ -1,23 +1,21 @@
 package com.windev.booking_service.service.impl;
 
-import com.windev.booking_service.dto.BookingDTO;
-import com.windev.booking_service.dto.FlightDTO;
-import com.windev.booking_service.dto.SeatDTO;
-import com.windev.booking_service.dto.UserDTO;
+import com.windev.booking_service.dto.*;
 import com.windev.booking_service.exception.SeatNotFoundException;
 import com.windev.booking_service.exception.SeatUnavailableException;
 import com.windev.booking_service.feign.FlightClient;
+import com.windev.booking_service.feign.PaymentClient;
 import com.windev.booking_service.feign.UserClient;
 import com.windev.booking_service.mapper.BookingMapper;
 import com.windev.booking_service.model.Booking;
 import com.windev.booking_service.model.Ticket;
+import com.windev.booking_service.payload.BookingWithPaymentResponse;
 import com.windev.booking_service.payload.CreateBookingRequest;
 import com.windev.booking_service.repository.BookingRepository;
 import com.windev.booking_service.service.BookingService;
 import com.windev.booking_service.service.kafka.BookingMessageQueue;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -39,6 +37,8 @@ public class BookingServiceImpl implements BookingService {
     private final BookingMapper bookingMapper;
 
     private final BookingMessageQueue queue;
+
+    private final PaymentClient paymentClient;
 
     public Booking createBooking(CreateBookingRequest request, String authHeader) {
         Booking booking = bookingMapper.createFromRequest(request);
@@ -91,18 +91,46 @@ public class BookingServiceImpl implements BookingService {
         return null;
     }
 
-    public Optional<Booking> getBookingById(String bookingId) {
-        return bookingRepository.findById(bookingId);
+    public BookingWithPaymentResponse getBookingById(String bookingId) {
+
+        ResponseEntity<PaymentDTO> response = paymentClient.getPaymentByBookingId(bookingId);
+
+        PaymentDTO payment = response.getBody();
+
+        Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not " +
+                "found with ID: " + bookingId));
+
+        BookingWithPaymentResponse bookingWithPaymentResponse = new BookingWithPaymentResponse(booking, payment);
+
+        log.info("getBookingById() --> bookingWithPaymentResponse: {}", bookingWithPaymentResponse);
+
+        return bookingWithPaymentResponse;
     }
 
-    public List<Booking> getAllBookings() {
-        return bookingRepository.findAll();
+    public List<BookingWithPaymentResponse> getAllBookings() {
+        List<Booking> bookings = bookingRepository.findAll();
+
+        ResponseEntity<List<PaymentDTO>> paymentResponse = paymentClient.getAllPayment();
+        List<PaymentDTO> payments = paymentResponse.getBody();
+
+        Map<String, PaymentDTO> paymentMap = payments.stream()
+                .collect(Collectors.toMap(PaymentDTO::getBookingId, Function.identity()));
+
+        List<BookingWithPaymentResponse> responses = bookings.stream()
+                .map(booking -> new BookingWithPaymentResponse(
+                        booking,
+                        paymentMap.getOrDefault(booking.getId(), null)
+                ))
+                .collect(Collectors.toList());
+
+        return responses;
     }
 
     public Booking updateBooking(String bookingId, Booking bookingDetails) {
         return bookingRepository.findById(bookingId)
                 .map(booking -> {
                     booking.setStatus(bookingDetails.getStatus());
+                    booking.setUpdatedAt(new Date());
                     return bookingRepository.save(booking);
                 }).orElseThrow(() -> new RuntimeException("Booking not found"));
     }
