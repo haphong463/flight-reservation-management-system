@@ -9,6 +9,8 @@ public class CreateBookingRequest {
     private String id;
 
     private String flightId;
+
+    private String paymentMethod;
     
     private List<Ticket> tickets;
 }

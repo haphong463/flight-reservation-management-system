@@ -1,4 +1,4 @@
-package com.windev.payment_service.dto;
+package com.windev.flight_service.event;
 
 import java.util.List;
 import lombok.Data;

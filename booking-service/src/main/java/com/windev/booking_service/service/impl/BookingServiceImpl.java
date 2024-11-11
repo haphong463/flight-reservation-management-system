@@ -1,5 +1,6 @@
 package com.windev.booking_service.service.impl;
 
+import com.windev.booking_service.dto.BookingDTO;
 import com.windev.booking_service.dto.FlightDTO;
 import com.windev.booking_service.dto.SeatDTO;
 import com.windev.booking_service.dto.UserDTO;
@@ -16,6 +17,7 @@ import com.windev.booking_service.service.BookingService;
 import com.windev.booking_service.service.kafka.BookingMessageQueue;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -70,14 +72,18 @@ public class BookingServiceImpl implements BookingService {
             }).toList();
 
             booking.setUserId(user.getId());
-            booking.setPaymentId("PM-" + System.currentTimeMillis());
+            booking.setPaymentId(System.currentTimeMillis() + UUID.randomUUID().toString());
             booking.setStatus("OK");
             booking.setTickets(tickets);
             log.info("Save booking reservation ok");
 
             Booking result = bookingRepository.save(booking);
 
-            queue.sendMessage(result, "test-booking");
+
+            BookingDTO resultDTO = bookingMapper.toDTO(result);
+            resultDTO.setPaymentMethod(request.getPaymentMethod());
+
+            queue.sendMessage(resultDTO, "test-booking");
 
             return result;
         }

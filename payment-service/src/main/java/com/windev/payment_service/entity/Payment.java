@@ -37,7 +37,6 @@ public class Payment {
 
     @PrePersist
     public void onCreate(){
-        id = UUID.randomUUID().toString();
         createdAt = new Date();
         updatedAt = new Date();
         transactionDate = LocalDateTime.now();

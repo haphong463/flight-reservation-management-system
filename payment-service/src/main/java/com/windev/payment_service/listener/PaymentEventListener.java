@@ -28,6 +28,7 @@ public class PaymentEventListener {
             EventMessage eventMessage = objectMapper.readValue(message, EventMessage.class);
 
             BookingEvent data = objectMapper.convertValue(eventMessage.getData(), BookingEvent.class);
+            log.info("handleEvents() --> received data: {}", data.toString());
 
             Payment payment = new Payment();
 
@@ -36,23 +37,19 @@ public class PaymentEventListener {
 
             for(TicketEvent ticketEvent : data.getTickets()){
                 if (ticketEvent.getPrice() != null) {
-                    // Chuyển đổi giá từ Double sang BigDecimal
                     BigDecimal ticketPrice = BigDecimal.valueOf(ticketEvent.getPrice());
                     total = total.add(ticketPrice);
                 }
             }
 
+            payment.setId(data.getPaymentId());
             payment.setBookingId(data.getId());
             payment.setAmount(total);
-            payment.setPaymentMethod("PAYPAL");
+            payment.setPaymentMethod(data.getPaymentMethod());
             payment.setStatus("PENDING");
 
-
-            payment.setPaymentMethod("PAYPAL");
-
-            paymentRepository.save(payment);
-            log.info("handleEvents() --> received data: {}", data.toString());
-
+            Payment result = paymentRepository.save(payment);
+            log.info("handleEvents() --> save payment ok: {}", result);
         }catch(Exception e){
             log.error("handleEvents() --> Error handling event: {}", e.getMessage());
         }

@@ -16,5 +16,7 @@ public class BookingDTO {
 
     private String status;
 
+    private String paymentMethod;
+
     private List<Ticket> tickets;
 }

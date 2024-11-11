@@ -3,6 +3,7 @@ package com.windev.booking_service.service.kafka;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.windev.booking_service.dto.BookingDTO;
 import com.windev.booking_service.model.Booking;
 import com.windev.booking_service.payload.EventMessage;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +26,7 @@ public class BookingMessageQueue {
     /**
      * Use kafkaTemplate to send event to notification
      */
-    public void sendMessage(Booking booking, String eventType){
+    public void sendMessage(BookingDTO booking, String eventType){
         EventMessage message = EventMessage.builder()
                 .data(booking)
                 .eventType(eventType)
