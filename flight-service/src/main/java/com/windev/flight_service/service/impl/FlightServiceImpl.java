@@ -21,12 +21,14 @@ import com.windev.flight_service.repository.AirplaneRepository;
 import com.windev.flight_service.repository.CrewRepository;
 import com.windev.flight_service.repository.FlightRepository;
 import com.windev.flight_service.repository.SeatRepository;
+import com.windev.flight_service.service.DistributedLocker;
 import com.windev.flight_service.service.FlightService;
 import com.windev.flight_service.service.cache.CrewCacheService;
 import com.windev.flight_service.service.cache.FlightCacheService;
 import com.windev.flight_service.service.kafka.FlightMessageQueue;
 import com.windev.flight_service.util.DateUtil;
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
@@ -35,6 +37,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +55,9 @@ public class FlightServiceImpl implements FlightService {
     private final CrewCacheService crewCacheService;
     private final CrewMapper crewMapper;
     private final AirplaneRepository airplaneRepository;
+    private final DistributedLocker distributedLocker;
+
+    private int dbQueryCount = 0;
 
     /**
      * @param pageNumber
@@ -79,19 +85,42 @@ public class FlightServiceImpl implements FlightService {
 
     @Override
     public FlightDetailDTO getOneFlight(String id) {
-
         FlightDetailDTO flightInCached = flightCacheService.findById(id);
 
         if (flightInCached != null) {
             return flightInCached;
         }
 
-        Flight existingFlight = flightRepository.findById(id)
-                .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + id + " not found."));
+        String lockKey = "LOCK_FLIGHT_" + id;
+        boolean isLocked = false;
 
-        FlightDetailDTO result = flightMapper.toDetailDTO(existingFlight);
-        flightCacheService.save(result);
-        return result;
+        try {
+            isLocked = distributedLocker.tryLock(lockKey, 1, 5, TimeUnit.SECONDS);
+
+            if (isLocked) {
+                flightInCached = flightCacheService.findById(id);
+                if (flightInCached != null) {
+                    return flightInCached;
+                }
+
+                Flight existingFlight = flightRepository.findById(id)
+                        .orElseThrow(() -> new FlightNotFoundException("Flight with ID: " + id + " not found."));
+
+                dbQueryCount++;
+                log.info("DB Query Count: {}", dbQueryCount);
+
+                FlightDetailDTO result = flightMapper.toDetailDTO(existingFlight);
+                flightCacheService.save(result);
+                return result;
+            } else {
+                throw new RuntimeException("Could not acquire lock to access flight details. Please try again.");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new RuntimeException("Thread was interrupted while trying to acquire lock", e);
+        } finally {
+            distributedLocker.unlock(lockKey);
+        }
     }
 
     @Override
@@ -109,8 +138,8 @@ public class FlightServiceImpl implements FlightService {
 
         List<Seat> allSeats = new ArrayList<>();
 
-        for(SeatConfig config : airplane.getSeatConfigs()){
-            List<Seat> seats = IntStream.rangeClosed(1,config.getSeatCount()).mapToObj(value -> {
+        for (SeatConfig config : airplane.getSeatConfigs()) {
+            List<Seat> seats = IntStream.rangeClosed(1, config.getSeatCount()).mapToObj(value -> {
                 return Seat.builder()
                         .price(determineSeatPrice(config.getSeatClass()))
                         .type(config.getSeatClass())
@@ -267,13 +296,13 @@ public class FlightServiceImpl implements FlightService {
             }
         }
 
-        if(removeCrews.isEmpty()){
+        if (removeCrews.isEmpty()) {
             log.info("No crews were removed from flight: {}", flight.getFlightNumber());
-        }else{
+        } else {
             flight.getCrews().removeAll(removeCrews);
             flightRepository.save(flight);
 
-            for(Crew crew : removeCrews){
+            for (Crew crew : removeCrews) {
                 removeCrewCacheWithFlight(crew.getId(), flight);
             }
         }
@@ -363,7 +392,7 @@ public class FlightServiceImpl implements FlightService {
             crew.getFlights().remove(flightDTO);
             crewCacheService.update(crew);
             log.info("Update cache for Crew ID: {} with Flight ID: {} ", crewId, flight.getId());
-        }else{
+        } else {
             log.warn("Flight ID: {} not found in Crew ID: {} assignedFlights.", flight.getFlightNumber(), crewId);
         }
     }
