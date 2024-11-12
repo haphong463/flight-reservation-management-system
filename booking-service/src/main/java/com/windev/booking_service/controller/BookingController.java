@@ -1,6 +1,8 @@
 package com.windev.booking_service.controller;
 
 
+import com.windev.booking_service.dto.FlightDTO;
+import com.windev.booking_service.dto.UserDTO;
 import com.windev.booking_service.model.Booking;
 import com.windev.booking_service.payload.BookingWithPaymentResponse;
 import com.windev.booking_service.payload.CreateBookingRequest;
@@ -20,7 +22,11 @@ public class BookingController {
     @PostMapping
     public ResponseEntity<Booking> createBooking(@RequestBody CreateBookingRequest request,
                                                  @RequestHeader("Authorization") String authHeader) {
-        Booking createdBooking = bookingService.createBooking(request, authHeader);
+
+        FlightDTO flight = bookingService.getFlightByFlightId(request.getFlightId());
+        UserDTO user = bookingService.getCurrentUser(authHeader);
+
+        Booking createdBooking = bookingService.createBooking(request, user, flight);
         return ResponseEntity.ok(createdBooking);
     }
 

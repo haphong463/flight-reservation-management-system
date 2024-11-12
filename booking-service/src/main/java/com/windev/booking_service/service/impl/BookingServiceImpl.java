@@ -1,6 +1,8 @@
 package com.windev.booking_service.service.impl;
 
 import com.windev.booking_service.dto.*;
+import com.windev.booking_service.exception.AuthenticatedException;
+import com.windev.booking_service.exception.FlightNotFoundException;
 import com.windev.booking_service.exception.SeatNotFoundException;
 import com.windev.booking_service.exception.SeatUnavailableException;
 import com.windev.booking_service.feign.FlightClient;
@@ -14,6 +16,9 @@ import com.windev.booking_service.payload.CreateBookingRequest;
 import com.windev.booking_service.repository.BookingRepository;
 import com.windev.booking_service.service.BookingService;
 import com.windev.booking_service.service.kafka.BookingMessageQueue;
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.retry.annotation.Retry;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -40,55 +45,53 @@ public class BookingServiceImpl implements BookingService {
 
     private final PaymentClient paymentClient;
 
-    public Booking createBooking(CreateBookingRequest request, String authHeader) {
+    private final static String USER_SERVICE = "USER-SERVICE";
+    private final static String FLIGHT_SERVICE = "FLIGHT-SERVICE";
+
+    public Booking createBooking(CreateBookingRequest request, UserDTO user, FlightDTO flight) {
         Booking booking = bookingMapper.createFromRequest(request);
-        UserDTO user = getCurrentUser(authHeader);
-        FlightDTO flight = getFlightById(request.getFlightId());
-        if (user != null && flight != null) {
-            List<String> requestedSeatNumbers =
-                    request.getTickets().stream().map(Ticket::getSeatNumber).toList();
 
-            List<SeatDTO> availableSeats = flight.getSeats();
+        List<String> requestedSeatNumbers =
+                request.getTickets().stream().map(Ticket::getSeatNumber).toList();
 
-            List<SeatDTO> seatsToBook = requestedSeatNumbers.stream()
-                    .map(seatNumber -> availableSeats.stream()
-                            .filter(seat -> seat.getSeatNumber().equals(seatNumber))
-                            .findFirst()
-                            .orElseThrow(() -> new SeatNotFoundException("Ghế " + seatNumber + " không tồn tại.")))
-                    .collect(Collectors.toList());
+        List<SeatDTO> availableSeats = flight.getSeats();
 
-            for (SeatDTO seat : seatsToBook) {
-                if (!seat.getIsAvailable()) {
-                    throw new SeatUnavailableException("Ghế " + seat.getSeatNumber() + " không khả dụng.");
-                }
+        List<SeatDTO> seatsToBook = requestedSeatNumbers.stream()
+                .map(seatNumber -> availableSeats.stream()
+                        .filter(seat -> seat.getSeatNumber().equals(seatNumber))
+                        .findFirst()
+                        .orElseThrow(() -> new SeatNotFoundException("Seat number " + seatNumber + " not found.")))
+                .collect(Collectors.toList());
+
+        for (SeatDTO seat : seatsToBook) {
+            if (!seat.getIsAvailable()) {
+                throw new SeatUnavailableException("Seat number " + seat.getSeatNumber() + " is unavailable.");
             }
-
-            List<Ticket> tickets = seatsToBook.stream().map(s -> {
-                Ticket ticket = new Ticket();
-                ticket.setTicketClass(s.getType());
-                ticket.setSeatNumber(s.getSeatNumber());
-                ticket.setPrice(s.getPrice());
-                return ticket;
-            }).toList();
-
-            booking.setUserId(user.getId());
-            booking.setPaymentId(System.currentTimeMillis() + UUID.randomUUID().toString());
-            booking.setStatus("OK");
-            booking.setTickets(tickets);
-            log.info("Save booking reservation ok");
-
-            Booking result = bookingRepository.save(booking);
-
-
-            BookingDTO resultDTO = bookingMapper.toDTO(result);
-            resultDTO.setPaymentMethod(request.getPaymentMethod());
-
-            queue.sendMessage(resultDTO, "test-booking");
-
-            return result;
         }
-        log.warn("Error fetch user/ flight...");
-        return null;
+
+        List<Ticket> tickets = seatsToBook.stream().map(s -> {
+            Ticket ticket = new Ticket();
+            ticket.setTicketClass(s.getType());
+            ticket.setSeatNumber(s.getSeatNumber());
+            ticket.setPrice(s.getPrice());
+            return ticket;
+        }).toList();
+
+        booking.setUserId(user.getId());
+        booking.setPaymentId(System.currentTimeMillis() + UUID.randomUUID().toString());
+        booking.setStatus("OK");
+        booking.setTickets(tickets);
+        log.info("Save booking reservation ok");
+
+        Booking result = bookingRepository.save(booking);
+
+
+        BookingDTO resultDTO = bookingMapper.toDTO(result);
+        resultDTO.setPaymentMethod(request.getPaymentMethod());
+
+        queue.sendMessage(resultDTO, "test-booking");
+
+        return result;
     }
 
     public BookingWithPaymentResponse getBookingById(String bookingId) {
@@ -140,29 +143,25 @@ public class BookingServiceImpl implements BookingService {
                 .ifPresent(bookingRepository::delete);
     }
 
-    private UserDTO getCurrentUser(String authHeader) {
-        try {
-            ResponseEntity<UserDTO> response = userClient.getCurrentUser(authHeader);
-            HttpStatusCode httpStatusCode = response.getStatusCode();
-            if (!httpStatusCode.is5xxServerError()) {
-                return response.getBody();
-            }
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
+    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetCurrentUser")
+    public UserDTO getCurrentUser(String authHeader) {
+        ResponseEntity<UserDTO> response = userClient.getCurrentUser(authHeader);
+        return response.getBody();
     }
 
-    private FlightDTO getFlightById(String id) {
-        try {
-            ResponseEntity<FlightDTO> response = flightClient.getFlightById(id);
-            HttpStatusCode httpStatusCode = response.getStatusCode();
-            if (!httpStatusCode.is5xxServerError() || !httpStatusCode.is4xxClientError()) {
-                return response.getBody();
-            }
-            return null;
-        } catch (Exception e) {
-            return null;
-        }
+    @CircuitBreaker(name = FLIGHT_SERVICE, fallbackMethod = "fallbackGetFlightByFlightId")
+    public FlightDTO getFlightByFlightId(String flightId) {
+        ResponseEntity<FlightDTO> response = flightClient.getFlightById(flightId);
+        return response.getBody();
+    }
+
+    public UserDTO fallbackGetCurrentUser(Throwable throwable) {
+        log.error("fallbackGetCurrentUser() --> {}", throwable.getMessage());
+        throw new AuthenticatedException("Can't get current user information.");
+    }
+
+    public FlightDTO fallbackGetFlightByFlightId(Throwable throwable) {
+        log.error("fallbackGetFlightByFlightId() --> {}", throwable.getMessage());
+        throw new FlightNotFoundException("Can't get flight information.");
     }
 }
