@@ -2,10 +2,12 @@ package com.windev.booking_service.controller;
 
 
 import com.windev.booking_service.dto.FlightDTO;
+import com.windev.booking_service.dto.PaymentDTO;
 import com.windev.booking_service.dto.UserDTO;
 import com.windev.booking_service.model.Booking;
 import com.windev.booking_service.payload.BookingWithPaymentResponse;
 import com.windev.booking_service.payload.CreateBookingRequest;
+import com.windev.booking_service.payload.PaginatedResponse;
 import com.windev.booking_service.service.BookingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -36,8 +38,13 @@ public class BookingController {
     }
 
     @GetMapping
-    public ResponseEntity<List<BookingWithPaymentResponse>> getAllBookings() {
-        return ResponseEntity.ok().body(bookingService.getAllBookings());
+    public ResponseEntity<PaginatedResponse<BookingWithPaymentResponse>> getAllBookings(@RequestParam(defaultValue =
+            "0") int pageNumber, @RequestParam(defaultValue = "10") int pageSize) {
+        List<PaymentDTO> payments = bookingService.getAllPayments();
+
+        PaginatedResponse<UserDTO> users = bookingService.getAllUsers();
+
+        return ResponseEntity.ok().body(bookingService.getAllBookings(payments, users.getData(), pageNumber, pageSize));
     }
 
     @PutMapping("/{bookingId}")

@@ -1,10 +1,12 @@
 package com.windev.booking_service.service;
 
 import com.windev.booking_service.dto.FlightDTO;
+import com.windev.booking_service.dto.PaymentDTO;
 import com.windev.booking_service.dto.UserDTO;
 import com.windev.booking_service.model.Booking;
 import com.windev.booking_service.payload.BookingWithPaymentResponse;
 import com.windev.booking_service.payload.CreateBookingRequest;
+import com.windev.booking_service.payload.PaginatedResponse;
 import java.util.List;
 import java.util.Optional;
 
@@ -13,7 +15,8 @@ public interface BookingService {
 
     BookingWithPaymentResponse getBookingById(String bookingId);
 
-    List<BookingWithPaymentResponse> getAllBookings();
+    PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments, List<UserDTO> users,
+                                                                 int pageNumber, int pageSize);
 
     Booking updateBooking(String bookingId, Booking bookingDetails);
 
@@ -22,4 +25,8 @@ public interface BookingService {
     UserDTO getCurrentUser(String authHeader);
 
     FlightDTO getFlightByFlightId(String flightId);
+
+    List<PaymentDTO> getAllPayments();
+
+    PaginatedResponse<UserDTO> getAllUsers();
 }

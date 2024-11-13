@@ -54,6 +54,8 @@ resilience4j.circuitbreaker:
       baseConfig: default
     FLIGHT-SERVICE:
       baseConfig: default
+    PAYMENT-SERVICE:
+      baseConfig: default
 
 resilience4j.ratelimiter:
   instances:

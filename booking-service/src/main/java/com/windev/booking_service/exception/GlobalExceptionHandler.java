@@ -27,4 +27,9 @@ public class GlobalExceptionHandler {
     public ResponseEntity<String> handleAuthenticatedException(Exception e){
         return new ResponseEntity<>(e.getMessage(),HttpStatus.UNAUTHORIZED);
     }
+
+    @ExceptionHandler(GetPaymentException.class)
+    public ResponseEntity<String> handleGetPaymentException(Exception e){
+        return new ResponseEntity<>(e.getMessage(),HttpStatus.BAD_REQUEST);
+    }
 }

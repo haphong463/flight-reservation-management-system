@@ -1,10 +1,7 @@
 package com.windev.booking_service.service.impl;
 
 import com.windev.booking_service.dto.*;
-import com.windev.booking_service.exception.AuthenticatedException;
-import com.windev.booking_service.exception.FlightNotFoundException;
-import com.windev.booking_service.exception.SeatNotFoundException;
-import com.windev.booking_service.exception.SeatUnavailableException;
+import com.windev.booking_service.exception.*;
 import com.windev.booking_service.feign.FlightClient;
 import com.windev.booking_service.feign.PaymentClient;
 import com.windev.booking_service.feign.UserClient;
@@ -13,6 +10,7 @@ import com.windev.booking_service.model.Booking;
 import com.windev.booking_service.model.Ticket;
 import com.windev.booking_service.payload.BookingWithPaymentResponse;
 import com.windev.booking_service.payload.CreateBookingRequest;
+import com.windev.booking_service.payload.PaginatedResponse;
 import com.windev.booking_service.repository.BookingRepository;
 import com.windev.booking_service.service.BookingService;
 import com.windev.booking_service.service.kafka.BookingMessageQueue;
@@ -24,6 +22,9 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,9 @@ public class BookingServiceImpl implements BookingService {
 
     private final static String USER_SERVICE = "USER-SERVICE";
     private final static String FLIGHT_SERVICE = "FLIGHT-SERVICE";
+    private final static String PAYMENT_SERVICE = "PAYMENT-SERVICE";
 
+    @Override
     public Booking createBooking(CreateBookingRequest request, UserDTO user, FlightDTO flight) {
         Booking booking = bookingMapper.createFromRequest(request);
 
@@ -94,6 +97,7 @@ public class BookingServiceImpl implements BookingService {
         return result;
     }
 
+    @Override
     public BookingWithPaymentResponse getBookingById(String bookingId) {
 
         ResponseEntity<PaymentDTO> response = paymentClient.getPaymentByBookingId(bookingId);
@@ -103,32 +107,44 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not " +
                 "found with ID: " + bookingId));
 
-        BookingWithPaymentResponse bookingWithPaymentResponse = new BookingWithPaymentResponse(booking, payment);
+        BookingWithPaymentResponse bookingWithPaymentResponse = new BookingWithPaymentResponse(booking, payment, null);
 
         log.info("getBookingById() --> bookingWithPaymentResponse: {}", bookingWithPaymentResponse);
 
         return bookingWithPaymentResponse;
     }
 
-    public List<BookingWithPaymentResponse> getAllBookings() {
-        List<Booking> bookings = bookingRepository.findAll();
+    @Override
+    public PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments, List<UserDTO> users,
+                                                                        int pageNumber, int pageSize) {
+        Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
-        ResponseEntity<List<PaymentDTO>> paymentResponse = paymentClient.getAllPayment();
-        List<PaymentDTO> payments = paymentResponse.getBody();
+        Page<Booking> bookingPage = bookingRepository.findAll(pageable);
 
         Map<String, PaymentDTO> paymentMap = payments.stream()
                 .collect(Collectors.toMap(PaymentDTO::getBookingId, Function.identity()));
 
-        List<BookingWithPaymentResponse> responses = bookings.stream()
+        Map<String, UserDTO> userMap = users.stream()
+                .collect(Collectors.toMap(UserDTO::getId, Function.identity()));
+
+        List<BookingWithPaymentResponse> responses = bookingPage.stream()
                 .map(booking -> new BookingWithPaymentResponse(
                         booking,
-                        paymentMap.getOrDefault(booking.getId(), null)
+                        paymentMap.getOrDefault(booking.getId(), null),
+                        userMap.getOrDefault(booking.getUserId(), null)
                 ))
                 .collect(Collectors.toList());
 
-        return responses;
+        return new PaginatedResponse<>(responses,
+                                bookingPage.getNumber(),
+                            bookingPage.getSize(),
+                                    bookingPage.isLast(),
+                                    bookingPage.getTotalPages(),
+                                    bookingPage.getTotalElements());
     }
 
+
+    @Override
     public Booking updateBooking(String bookingId, Booking bookingDetails) {
         return bookingRepository.findById(bookingId)
                 .map(booking -> {
@@ -138,21 +154,48 @@ public class BookingServiceImpl implements BookingService {
                 }).orElseThrow(() -> new RuntimeException("Booking not found"));
     }
 
+    @Override
     public void deleteBooking(String bookingId) {
         bookingRepository.findById(bookingId)
                 .ifPresent(bookingRepository::delete);
     }
 
+    @Override
     @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetCurrentUser")
     public UserDTO getCurrentUser(String authHeader) {
         ResponseEntity<UserDTO> response = userClient.getCurrentUser(authHeader);
         return response.getBody();
     }
 
+    @Override
     @CircuitBreaker(name = FLIGHT_SERVICE, fallbackMethod = "fallbackGetFlightByFlightId")
     public FlightDTO getFlightByFlightId(String flightId) {
         ResponseEntity<FlightDTO> response = flightClient.getFlightById(flightId);
         return response.getBody();
+    }
+
+    @Override
+    @CircuitBreaker(name = PAYMENT_SERVICE, fallbackMethod = "fallbackGetAllPayments")
+    public List<PaymentDTO> getAllPayments() {
+        ResponseEntity<List<PaymentDTO>> paymentResponse = paymentClient.getAllPayment();
+        return paymentResponse.getBody();
+    }
+
+    @Override
+    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetAllUsers")
+    public PaginatedResponse<UserDTO> getAllUsers() {
+        ResponseEntity<PaginatedResponse<UserDTO>> userResponse = userClient.getAllUsers();
+        return userResponse.getBody();
+    }
+
+    public PaginatedResponse<UserDTO> fallbackGetAllUsers(Throwable throwable) {
+        log.error("fallbackGetAllUsers() --> {}", throwable.getMessage());
+        throw new GetPaymentException("Can't get all users.");
+    }
+
+    public List<PaymentDTO> fallbackGetAllPayments(Throwable throwable) {
+        log.error("fallbackGetAllPayments() --> {}", throwable.getMessage());
+        throw new GetPaymentException("Can't get all payments.");
     }
 
     public UserDTO fallbackGetCurrentUser(Throwable throwable) {

@@ -1,6 +1,7 @@
 package com.windev.booking_service.payload;
 
 import com.windev.booking_service.dto.PaymentDTO;
+import com.windev.booking_service.dto.UserDTO;
 import com.windev.booking_service.model.Booking;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -10,4 +11,5 @@ import lombok.Data;
 public class BookingWithPaymentResponse {
     private Booking booking;
     private PaymentDTO payment;
+    private UserDTO user;
 }
