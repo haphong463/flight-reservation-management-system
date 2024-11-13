@@ -48,7 +48,16 @@ public class UserServiceImpl implements UserService {
     public PaginatedResponse<UserDTO> getAllUsers(Pageable pageable) {
         Page<User> pageUser = userRepository.findAll(pageable);
 
-        List<UserDTO> list = pageUser.getContent().stream().map(userMapper::toUserDTO).toList();
+        List<UserDTO> list = pageUser.getContent().stream().map(user -> {
+            UserDTO userDTO = userMapper.toUserDTO(user);
+
+            // Retrieve the UserProfile for each user and set it in the UserDTO
+            UserProfileDTO userProfileDTO = userProfileService.getUserProfile(user.getId());
+            userDTO.setProfile(userProfileDTO);
+
+            return userDTO;
+        }).toList();
+
 
         return new PaginatedResponse<UserDTO>(list,
                 pageUser.getNumber(),
