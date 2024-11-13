@@ -115,16 +115,19 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
+    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetAllUsers")
     public PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments, List<UserDTO> users,
                                                                         int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
         Page<Booking> bookingPage = bookingRepository.findAll(pageable);
 
+        Set<String> userIds = bookingPage.getContent().stream().map(Booking::getUserId).collect(Collectors.toSet());
+
         Map<String, PaymentDTO> paymentMap = payments.stream()
                 .collect(Collectors.toMap(PaymentDTO::getBookingId, Function.identity()));
 
-        Map<String, UserDTO> userMap = users.stream()
+        Map<String, UserDTO> userMap = userClient.getAllUsers(userIds).getBody().stream()
                 .collect(Collectors.toMap(UserDTO::getId, Function.identity()));
 
         List<BookingWithPaymentResponse> responses = bookingPage.stream()
@@ -182,10 +185,10 @@ public class BookingServiceImpl implements BookingService {
     }
 
     @Override
-    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetAllUsers")
+//    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetAllUsers")
     public PaginatedResponse<UserDTO> getAllUsers() {
-        ResponseEntity<PaginatedResponse<UserDTO>> userResponse = userClient.getAllUsers();
-        return userResponse.getBody();
+//        ResponseEntity<PaginatedResponse<UserDTO>> userResponse = userClient.getAllUsers();
+        return null;
     }
 
     public PaginatedResponse<UserDTO> fallbackGetAllUsers(Throwable throwable) {
