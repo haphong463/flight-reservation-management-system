@@ -18,6 +18,7 @@ import com.windev.user_service.service.UserService;
 import java.security.SecureRandom;
 import java.util.Date;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
@@ -65,6 +66,17 @@ public class UserServiceImpl implements UserService {
                 pageUser.isLast(),
                 pageUser.getTotalPages(),
                 pageUser.getTotalElements());
+    }
+
+    @Override
+    public List<UserDTO> findUserByIds(Set<String> userIds) {
+        return userRepository.findAllByIdIn(userIds).stream().map(user -> {
+            UserDTO userDTO = userMapper.toUserDTO(user);
+            UserProfileDTO userProfileDTO = userProfileService.getUserProfile(user.getId());
+            userDTO.setProfile(userProfileDTO);
+
+            return userDTO;
+        }).toList();
     }
 
     @Override

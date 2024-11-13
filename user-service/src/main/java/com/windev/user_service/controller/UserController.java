@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -29,6 +30,7 @@ public class UserController {
 
     /**
      * Update User
+     *
      * @param id
      * @param request
      * @return user
@@ -53,6 +55,7 @@ public class UserController {
 
     /**
      * GET All Users
+     *
      * @param pageable
      * @return
      */
@@ -76,8 +79,21 @@ public class UserController {
         }
     }
 
+
+    @GetMapping("/ids")
+    public ResponseEntity<?> getAllUsers(@RequestParam("ids") Set<String> ids
+    ) {
+        try {
+            return new ResponseEntity<>(userService.findUserByIds(ids), HttpStatus.OK);
+        } catch (Exception e) {
+            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
+        }
+    }
+
+
     /**
      * Get User By Id
+     *
      * @param id
      * @return
      */
@@ -101,6 +117,7 @@ public class UserController {
 
     /**
      * Change User's Password
+     *
      * @param id
      * @param request
      * @return
@@ -126,6 +143,7 @@ public class UserController {
 
     /**
      * Send Email To Reset User's Password
+     *
      * @param request
      * @return
      */
@@ -149,6 +167,7 @@ public class UserController {
 
     /**
      * Reset User's Password
+     *
      * @param token
      * @param request
      * @return
