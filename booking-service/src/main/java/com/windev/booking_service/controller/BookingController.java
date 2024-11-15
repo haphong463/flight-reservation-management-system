@@ -42,7 +42,7 @@ public class BookingController {
             "0") int pageNumber, @RequestParam(defaultValue = "10") int pageSize) {
         List<PaymentDTO> payments = bookingService.getAllPayments();
 
-        return ResponseEntity.ok().body(bookingService.getAllBookings(payments, null, pageNumber, pageSize));
+        return ResponseEntity.ok().body(bookingService.getAllBookings(payments, pageNumber, pageSize));
     }
 
     @PutMapping("/{bookingId}")

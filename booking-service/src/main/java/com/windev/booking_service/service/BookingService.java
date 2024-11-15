@@ -15,7 +15,7 @@ public interface BookingService {
 
     BookingWithPaymentResponse getBookingById(String bookingId);
 
-    PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments, List<UserDTO> users,
+    PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments,
                                                                  int pageNumber, int pageSize);
 
     Booking updateBooking(String bookingId, Booking bookingDetails);
@@ -27,6 +27,4 @@ public interface BookingService {
     FlightDTO getFlightByFlightId(String flightId);
 
     List<PaymentDTO> getAllPayments();
-
-    PaginatedResponse<UserDTO> getAllUsers();
 }

@@ -91,7 +91,7 @@ public class BookingServiceImpl implements BookingService {
 
         BookingDTO resultDTO = bookingMapper.toDTO(result);
         resultDTO.setPaymentMethod(request.getPaymentMethod());
-
+        
         queue.sendMessage(resultDTO, "test-booking");
 
         return result;
@@ -116,7 +116,7 @@ public class BookingServiceImpl implements BookingService {
 
     @Override
     @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetAllUsers")
-    public PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments, List<UserDTO> users,
+    public PaginatedResponse<BookingWithPaymentResponse> getAllBookings(List<PaymentDTO> payments,
                                                                         int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
 
@@ -184,12 +184,6 @@ public class BookingServiceImpl implements BookingService {
         return paymentResponse.getBody();
     }
 
-    @Override
-//    @CircuitBreaker(name = USER_SERVICE, fallbackMethod = "fallbackGetAllUsers")
-    public PaginatedResponse<UserDTO> getAllUsers() {
-//        ResponseEntity<PaginatedResponse<UserDTO>> userResponse = userClient.getAllUsers();
-        return null;
-    }
 
     public PaginatedResponse<UserDTO> fallbackGetAllUsers(Throwable throwable) {
         log.error("fallbackGetAllUsers() --> {}", throwable.getMessage());
