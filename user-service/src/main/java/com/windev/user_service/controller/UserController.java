@@ -1,5 +1,6 @@
 package com.windev.user_service.controller;
 
+import com.windev.user_service.dto.UserDTO;
 import com.windev.user_service.payload.request.password.PasswordChangeRequest;
 import com.windev.user_service.payload.request.password.PasswordForgotRequest;
 import com.windev.user_service.payload.request.password.PasswordResetRequest;
@@ -107,12 +108,8 @@ public class UserController {
             @ApiResponse(responseCode = "200", description = "Successfully retrieved user information"),
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> getUserById(@PathVariable String id) {
-        try {
+    public ResponseEntity<UserDTO> getUserById(@PathVariable String id) {
             return new ResponseEntity<>(userService.getUserById(id), HttpStatus.OK);
-        } catch (Exception e) {
-            return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
-        }
     }
 
     /**
