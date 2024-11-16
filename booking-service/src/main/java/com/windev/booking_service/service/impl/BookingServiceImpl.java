@@ -15,8 +15,6 @@ import com.windev.booking_service.repository.BookingRepository;
 import com.windev.booking_service.service.BookingService;
 import com.windev.booking_service.service.kafka.BookingMessageQueue;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
-import io.github.resilience4j.retry.annotation.Retry;
 import java.util.*;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -25,10 +23,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-
 
 @Service
 @RequiredArgsConstructor
