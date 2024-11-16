@@ -21,13 +21,14 @@ spring:
   kafka:
     notification:
       topic: notification-topic
-    bootstrap-servers: localhost:9092
     producer:
+      bootstrap-servers: localhost:29092
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
         spring.json.trusted.packages: "*"
     consumer:
+      bootstrap-servers: localhost:29092
       group-id: flight-service-group
       auto-offset-reset: latest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer

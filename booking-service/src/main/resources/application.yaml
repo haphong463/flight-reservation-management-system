@@ -17,8 +17,8 @@ spring:
       topic: notification-topic
     booking:
       topic: booking-topic
-    bootstrap-servers: localhost:9092
     producer:
+      bootstrap-servers: localhost:29092
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
       properties:
@@ -41,14 +41,14 @@ management:
 resilience4j.circuitbreaker:
   configs:
     default:
-        registerHealthIndicator: true
-        slidingWindowSize: 10
-        permittedNumberOfCallsInHalfOpenState: 3
-        #      slidingWindowType: TIME_BASED
-        minimumNumberOfCalls: 5
-        waitDurationInOpenState: 5s
-        failureRateThreshold: 50
-        eventConsumerBufferSize: 10
+      registerHealthIndicator: true
+      slidingWindowSize: 10
+      permittedNumberOfCallsInHalfOpenState: 3
+      #      slidingWindowType: TIME_BASED
+      minimumNumberOfCalls: 5
+      waitDurationInOpenState: 5s
+      failureRateThreshold: 50
+      eventConsumerBufferSize: 10
   instances:
     USER-SERVICE:
       baseConfig: default
