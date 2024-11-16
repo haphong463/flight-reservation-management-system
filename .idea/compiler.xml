@@ -11,6 +11,7 @@
         <module name="payment-service" />
         <module name="flight-service" />
         <module name="service-registry" />
+        <module name="notification-service" />
         <module name="booking-service" />
       </profile>
     </annotationProcessing>
@@ -19,6 +20,7 @@
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="booking-service" options="-parameters" />
       <module name="flight-service" options="-parameters" />
+      <module name="notification-service" options="-parameters" />
       <module name="payment-service" options="-parameters" />
       <module name="service-registry" options="-parameters" />
       <module name="user-service" options="-parameters" />
