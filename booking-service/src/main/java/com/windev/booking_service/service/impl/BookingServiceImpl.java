@@ -87,7 +87,7 @@ public class BookingServiceImpl implements BookingService {
 
         BookingDTO resultDTO = bookingMapper.toDTO(result);
         resultDTO.setPaymentMethod(request.getPaymentMethod());
-        
+
         queue.sendMessage(resultDTO, "test-booking");
 
         return result;
@@ -103,7 +103,11 @@ public class BookingServiceImpl implements BookingService {
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not " +
                 "found with ID: " + bookingId));
 
-        BookingWithPaymentResponse bookingWithPaymentResponse = new BookingWithPaymentResponse(booking, payment, null);
+        ResponseEntity<List<UserDTO>> response2 = userClient.getAllUsers(Set.of(booking.getUserId()));
+
+        UserDTO user = response2.getBody().get(0);
+
+        BookingWithPaymentResponse bookingWithPaymentResponse = new BookingWithPaymentResponse(booking, payment, user);
 
         log.info("getBookingById() --> bookingWithPaymentResponse: {}", bookingWithPaymentResponse);
 
@@ -135,11 +139,11 @@ public class BookingServiceImpl implements BookingService {
                 .collect(Collectors.toList());
 
         return new PaginatedResponse<>(responses,
-                                bookingPage.getNumber(),
-                            bookingPage.getSize(),
-                                    bookingPage.isLast(),
-                                    bookingPage.getTotalPages(),
-                                    bookingPage.getTotalElements());
+                bookingPage.getNumber(),
+                bookingPage.getSize(),
+                bookingPage.isLast(),
+                bookingPage.getTotalPages(),
+                bookingPage.getTotalElements());
     }
 
 

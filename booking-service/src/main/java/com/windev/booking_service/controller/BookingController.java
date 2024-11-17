@@ -44,7 +44,7 @@ public class BookingController {
             required = true,
             content = @Content(schema = @Schema(implementation = CreateBookingRequest.class)))
     @PostMapping
-    public ResponseEntity<Booking> createBooking(@RequestBody CreateBookingRequest request,
+    public ResponseEntity<Booking> createBooking(@org.springframework.web.bind.annotation.RequestBody CreateBookingRequest request,
                                                  @RequestHeader("Authorization") String authHeader) {
 
         FlightDTO flight = bookingService.getFlightByFlightId(request.getFlightId());
