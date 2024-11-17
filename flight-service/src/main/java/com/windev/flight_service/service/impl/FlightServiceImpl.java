@@ -59,11 +59,6 @@ public class FlightServiceImpl implements FlightService {
 
     private int dbQueryCount = 0;
 
-    /**
-     * @param pageNumber
-     * @param pageSize
-     * @return
-     */
     @Override
     public PaginatedResponse<FlightDTO> getAllFlights(int pageNumber, int pageSize) {
         Pageable pageable = PageRequest.of(pageNumber, pageSize);
@@ -81,10 +76,27 @@ public class FlightServiceImpl implements FlightService {
                 , flightPage.getTotalPages()
                 , flightPage.isLast());
     }
-
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public FlightDetailDTO getOneFlight(String id) {
+        /**
+         * Cache
+         *   |
+         *   |
+         * Lock
+         *   |
+         *   |
+         * Cache
+         *   |
+         *   |
+         * MySQL
+         *   |
+         *   |
+         * Set cache
+         *   |
+         *   |
+         * unLock
+         */
         FlightDetailDTO flightInCached = flightCacheService.findById(id);
 
         if (flightInCached != null) {
@@ -92,10 +104,11 @@ public class FlightServiceImpl implements FlightService {
         }
 
         String lockKey = "LOCK_FLIGHT_" + id;
-        boolean isLocked = false;
 
         try {
-            isLocked = distributedLocker.tryLock(lockKey, 1, 5, TimeUnit.SECONDS);
+            boolean isLocked = distributedLocker.tryLock(lockKey, 1, 5, TimeUnit.SECONDS);
+
+            // dù thành công hay không vẫn phải unlock
 
             if (isLocked) {
                 flightInCached = flightCacheService.findById(id);
@@ -113,7 +126,7 @@ public class FlightServiceImpl implements FlightService {
                 flightCacheService.save(result);
                 return result;
             } else {
-                throw new RuntimeException("Could not acquire lock to access flight details. Please try again.");
+                return flightInCached;
             }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
@@ -122,7 +135,7 @@ public class FlightServiceImpl implements FlightService {
             distributedLocker.unlock(lockKey);
         }
     }
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public FlightDetailDTO createFlight(CreateFlightRequest request) {
         Airplane airplane = airplaneRepository.findById(request.getAirplaneId())
@@ -163,7 +176,7 @@ public class FlightServiceImpl implements FlightService {
 
         return result;
     }
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     @Transactional
     public FlightDetailDTO updateFlight(String id, UpdateFlightRequest request) {
@@ -191,19 +204,13 @@ public class FlightServiceImpl implements FlightService {
 
         FlightDetailDTO result = flightMapper.toDetailDTO(updatedFlight);
 
-        /**
-         * UPDATE IN REDIS
-         */
         flightCacheService.update(result);
 
-        /**
-         * SEND MESSAGE TO NOTIFICATION TOPIC
-         */
         queue.sendMessage(result, EventType.EDIT_FLIGHT.name());
 
         return result;
     }
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public FlightDetailDTO updateFlightStatus(String id, UpdateFlightStatusRequest request) {
         Flight existingFlight = flightRepository.findById(id)
@@ -215,8 +222,7 @@ public class FlightServiceImpl implements FlightService {
 
         return flightMapper.toDetailDTO(savedFlight);
     }
-
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public void deleteFlight(String id) {
         FlightDetailDTO existingFlight = flightCacheService.findById(id);
@@ -233,7 +239,7 @@ public class FlightServiceImpl implements FlightService {
 
         queue.sendMessage(existingFlight, EventType.DELETE_FLIGHT.name());
     }
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public FlightDetailDTO assignCrewToFlight(String flightId, Set<Long> crewIds) {
         Flight flight = flightRepository.findById(flightId)
@@ -273,8 +279,7 @@ public class FlightServiceImpl implements FlightService {
 
         return result;
     }
-
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public FlightDetailDTO removeCrewFromFlight(String flightId, Set<Long> crewIds) {
         Flight flight = flightRepository.findById(flightId)
@@ -313,8 +318,7 @@ public class FlightServiceImpl implements FlightService {
 
         return result;
     }
-
-
+    // -----------------------------------------------------------------------------------------------------------------
     @Override
     public PaginatedResponse<FlightDTO> searchFlights(String origin, String destination, Date departureDate,
                                                       int pageNumber, int pageSize) {
@@ -334,6 +338,7 @@ public class FlightServiceImpl implements FlightService {
     }
 
 
+    // ?
     @Override
     @Transactional
     public SeatDTO updateSeat(String flightId, String seatId, UpdateSeatRequest request) {

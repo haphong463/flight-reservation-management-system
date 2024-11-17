@@ -14,6 +14,14 @@ spring:
     properties:
       hibernate:
         batch_versioned_data: true
+  data:
+    redis:
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
 #  sql:
 #    init:
 #      mode: always
