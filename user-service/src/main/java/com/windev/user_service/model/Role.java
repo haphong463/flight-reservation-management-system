@@ -18,7 +18,4 @@ public class Role {
     private String id;
 
     private String name;
-
-    @DBRef
-    private List<Authority> authorities;
 }

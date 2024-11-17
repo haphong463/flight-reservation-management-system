@@ -1,9 +1,11 @@
 package com.windev.user_service.controller;
 
 import com.windev.user_service.dto.UserDTO;
+import com.windev.user_service.model.Authority;
 import com.windev.user_service.payload.request.password.PasswordChangeRequest;
 import com.windev.user_service.payload.request.password.PasswordForgotRequest;
 import com.windev.user_service.payload.request.password.PasswordResetRequest;
+import com.windev.user_service.payload.request.user.AuthorityRequest;
 import com.windev.user_service.payload.request.user_profile.UserProfileRequest;
 import com.windev.user_service.service.UserService;
 
@@ -13,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
@@ -109,7 +112,7 @@ public class UserController {
             @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<UserDTO> getUserById(@PathVariable String id) {
-            return new ResponseEntity<>(userService.getUserById(id), HttpStatus.OK);
+        return new ResponseEntity<>(userService.getUserById(id), HttpStatus.OK);
     }
 
     /**
@@ -185,5 +188,11 @@ public class UserController {
         } catch (Exception e) {
             return new ResponseEntity<>(e.getMessage(), HttpStatus.INTERNAL_SERVER_ERROR);
         }
+    }
+
+
+    @PatchMapping("{id}/authority")
+    public ResponseEntity<UserDTO> updateAuthority(@PathVariable String id, @RequestBody AuthorityRequest request) {
+        return new ResponseEntity<>(userService.updateAuthority(id, request), HttpStatus.OK);
     }
 }

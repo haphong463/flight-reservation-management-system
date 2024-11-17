@@ -15,4 +15,8 @@ public class Authority {
     private String id;
 
     private String name;
+
+    public Authority(String name){
+        this.name = name;
+    }
 }

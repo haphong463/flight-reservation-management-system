@@ -31,6 +31,9 @@ public class User {
     @DBRef
     private List<Role> roles;
 
+    @DBRef
+    private List<Authority> authorities;
+
     private Preferences preferences;
 
     private boolean emailVerified;

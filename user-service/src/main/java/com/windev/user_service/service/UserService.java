@@ -3,6 +3,7 @@ package com.windev.user_service.service;
 import com.windev.user_service.dto.UserDTO;
 import com.windev.user_service.payload.request.password.PasswordChangeRequest;
 import com.windev.user_service.payload.request.password.PasswordResetRequest;
+import com.windev.user_service.payload.request.user.AuthorityRequest;
 import com.windev.user_service.payload.request.user_profile.UserProfileRequest;
 import com.windev.user_service.payload.response.PaginatedResponse;
 import java.util.List;
@@ -23,4 +24,6 @@ public interface UserService {
     void forgotPasswordRequest(String email);
 
     void resetPassword(String token, PasswordResetRequest request);
+
+    UserDTO updateAuthority(String id, AuthorityRequest request);
 }

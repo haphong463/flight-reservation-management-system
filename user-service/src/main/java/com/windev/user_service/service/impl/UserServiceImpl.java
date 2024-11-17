@@ -3,13 +3,18 @@ package com.windev.user_service.service.impl;
 import com.windev.user_service.dto.UserDTO;
 import com.windev.user_service.dto.UserProfileDTO;
 import com.windev.user_service.enums.EventType;
+import com.windev.user_service.exception.AuthorityNotFoundException;
+import com.windev.user_service.exception.UserNotFoundException;
 import com.windev.user_service.mapper.UserMapper;
+import com.windev.user_service.model.Authority;
 import com.windev.user_service.model.ForgotPasswordToken;
 import com.windev.user_service.model.User;
 import com.windev.user_service.payload.request.password.PasswordChangeRequest;
 import com.windev.user_service.payload.request.password.PasswordResetRequest;
+import com.windev.user_service.payload.request.user.AuthorityRequest;
 import com.windev.user_service.payload.request.user_profile.UserProfileRequest;
 import com.windev.user_service.payload.response.PaginatedResponse;
+import com.windev.user_service.repository.AuthorityRepository;
 import com.windev.user_service.repository.ForgotPasswordTokenRepository;
 import com.windev.user_service.repository.UserRepository;
 import com.windev.user_service.service.KafkaService;
@@ -18,7 +23,9 @@ import com.windev.user_service.service.UserService;
 import java.security.SecureRandom;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.util.encoders.Hex;
@@ -44,6 +51,7 @@ public class UserServiceImpl implements UserService {
 
     private final UserProfileService userProfileService;
 
+    private final AuthorityRepository authorityRepository;
 
     @Override
     public PaginatedResponse<UserDTO> getAllUsers(Pageable pageable) {
@@ -181,6 +189,23 @@ public class UserServiceImpl implements UserService {
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
         userRepository.save(user);
         log.info("resetPassword() --> changed password successfully");
+    }
+
+    @Override
+    public UserDTO updateAuthority(String id, AuthorityRequest request) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new UserNotFoundException("User with id: " + id + " not found"));
+
+        List<Authority> authorities = request.getNames().stream()
+                .map(name -> authorityRepository.findByName(name)
+                        .orElseThrow(() -> new AuthorityNotFoundException("Authority with name: " + name + " not " +
+                                "found."))).toList();
+
+
+        user.setAuthorities(authorities);
+        User result = userRepository.save(user);
+
+        return userMapper.toUserDTO(result);
     }
 
     /**
