@@ -2,6 +2,13 @@ server:
   port: 8084
 
 spring:
+  sleuth:
+    sampler:
+      probability: 1
+
+  zipkin:
+    base-url: http://127.0.0.1:9411/
+
   datasource:
     url: jdbc:postgresql://localhost:5432/frms_payment_db
     username: postgres
@@ -17,7 +24,18 @@ spring:
 #  sql:
 #    init:
 #      mode: always
-
+management:
+  tracing:
+    sampling:
+      probability: 1
+  endpoints:
+    web:
+      exposure:
+        include:
+          - '*'
+  endpoint:
+    health:
+      show-details: always
   kafka:
     consumer:
       bootstrap-servers: localhost:29092

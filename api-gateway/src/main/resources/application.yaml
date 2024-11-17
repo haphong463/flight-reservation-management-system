@@ -1,21 +1,65 @@
 server:
   port: 9191
 spring:
+  sleuth:
+    sampler:
+      probability: 1
+
+  zipkin:
+    base-url: http://127.0.0.1:9411/
+
   cloud:
     gateway:
       routes:
+        ## AUTHENTICATION ROUTE
         - id: authentication
           uri: lb://USER-SERVICE
           predicates:
             - Path=/api/v1/auth/login,/api/v1/auth/register,/api/v1/auth/verify-email/{token},/api/v1/users/forgot-password,/api/v1/users/reset-password/{token}
 
+        ## USER ROUTE
         - id: get-current-user
           uri: lb://USER-SERVICE
           predicates:
-            - Path=/api/v1/auth/me, /api/v1/auth/logout
+            - Path=/api/v1/auth/me,/api/v1/auth/logout,/api/v1/users/{id}/change-password
           filter:
             - AuthenticationFilter
 
+        ## READ FLIGHT ROUTE
+        - id: read-flight-service
+          uri: lb://FLIGHT-SERVICE
+          predicates:
+            - Path=/api/v1/flights/**, /api/v1/airplanes/**, /api/v1/crews/**
+            - Method=GET
 
+        ## WRITE FLIGHT ROUTE
+        - id: write-flight-service
+          uri: lb://FLIGHT-SERVICE
+          predicates:
+            - Path=/api/v1/flights/**, /api/v1/airplanes/**, /api/v1/crews/**
+            - Method=POST, PUT, DELETE
+          filter:
+            - AuthenticationFilter
+
+        ## BOOKING ROUTE
+        - id: booking-service
+          uri: lb://BOOKING-SERVICE
+          predicates:
+            - Path=/api/v1/bookings/**
+          filter:
+            - AuthenticationFilter
 jwt:
   secret: 5367566B59703373367639792F423F4528482B4D6251655468576D5A71347437
+
+management:
+  tracing:
+    sampling:
+      probability: 1
+  endpoints:
+    web:
+      exposure:
+        include:
+          - '*'
+  endpoint:
+    health:
+      show-details: always

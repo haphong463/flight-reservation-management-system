@@ -2,6 +2,11 @@ server:
   port: 8082
 
 spring:
+  sleuth:
+    sampler:
+      probability: 1
+  zipkin:
+    base-url: http://127.0.0.1:9411/
   data:
     mongodb:
       host: localhost
@@ -25,6 +30,9 @@ spring:
         spring.json.trusted.packages: "*"
 
 management:
+  tracing:
+    sampling:
+      probability: 1
   health:
     circuitbreakers:
       enabled: true
