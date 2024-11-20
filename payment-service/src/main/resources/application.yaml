@@ -7,7 +7,7 @@ spring:
       probability: 1
 
   zipkin:
-    base-url: http://127.0.0.1:9411/
+    base-url: http://zipkin:9411/
 
   datasource:
     url: jdbc:postgresql://localhost:5432/frms_payment_db
@@ -24,6 +24,21 @@ spring:
 #  sql:
 #    init:
 #      mode: always
+  kafka:
+    payment:
+      topic: payment-topic
+    producer:
+      bootstrap-servers: localhost:29092
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      properties:
+        spring.json.trusted.packages: "*"
+    consumer:
+      bootstrap-servers: localhost:29092
+      group-id: payment-service-group
+      auto-offset-reset: latest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
 management:
   tracing:
     sampling:
@@ -36,10 +51,3 @@ management:
   endpoint:
     health:
       show-details: always
-  kafka:
-    consumer:
-      bootstrap-servers: localhost:29092
-      group-id: payment-service-group
-      auto-offset-reset: latest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
