@@ -1,6 +1,33 @@
 version: '3.8'
 
 services:
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:7.17.3
+    environment:
+      - discovery.type=single-node
+    ports:
+      - "9200:9200"
+
+  logstash:
+    image: docker.elastic.co/logstash/logstash:7.17.3
+    ports:
+        - "5044:5044"
+    volumes:
+        - ./elk-stack/logstash/pipeline/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
+
+  kibana:
+    image: docker.elastic.co/kibana/kibana:7.17.3
+    ports:
+        - "5601:5601"
+    environment:
+        ELASTICSEARCH_URL: http://elasticsearch:9200
+
+#  redis:
+#    image: redis:7.0
+#    ports:
+#      - "6379:6379"
+#
+
   prometheus:
     image: prom/prometheus:latest
     container_name: prometheus
@@ -17,13 +44,6 @@ services:
     restart: unless-stopped
     volumes:
       - ./data/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
-#  zipkin:
-#    image: openzipkin/zipkin
-#    container_name: zipkin
-#    ports:
-#      - "9411:9411"
-#    networks:
-#      - shop-network
   zookeeper:
     image: confluentinc/cp-zookeeper:7.3.1
     container_name: zookeeper
@@ -70,3 +90,7 @@ services:
 networks:
   shop-network:
     driver: bridge
+
+volumes:
+  es-data:
+    driver: local
