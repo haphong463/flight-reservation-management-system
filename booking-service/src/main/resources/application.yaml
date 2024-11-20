@@ -6,7 +6,7 @@ spring:
     sampler:
       probability: 1
   zipkin:
-    base-url: http://127.0.0.1:9411/
+    base-url: http://zipkin:9411/
   data:
     mongodb:
       host: localhost
