@@ -160,7 +160,7 @@ public class UserServiceImpl implements UserService {
 
 
         PasswordForgotEvent event = new PasswordForgotEvent(existingUser.getEmail(), token);
-        kafkaService.sendPasswordForgotMessage(event, EventType.FORGOT_PASSWORD.name());
+        kafkaService.sendPasswordForgotMessage(event, "FORGOT-PASSWORD");
 
         log.info("forgotPasswordRequest() --> a link to reset your password has been sent to your email: {}", email);
     }

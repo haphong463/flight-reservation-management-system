@@ -108,7 +108,7 @@ public class AuthServiceImpl implements AuthService {
          * Send user-registered event to notification topic
          */
         UserRegisteredEvent event = new UserRegisteredEvent(user.getEmail(), token);
-        kafkaService.sendUserRegisteredMessage(event, EventType.USER_REGISTERED.name());
+        kafkaService.sendUserRegisteredMessage(event, "USER-REGISTERED");
 
         return userMapper.toUserRegisteredResponse(createdUser);
     }
