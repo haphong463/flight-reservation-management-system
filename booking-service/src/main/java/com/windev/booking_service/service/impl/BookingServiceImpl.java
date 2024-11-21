@@ -62,19 +62,16 @@ public class BookingServiceImpl implements BookingService {
                         .orElseThrow(() -> new SeatNotFoundException("Seat number " + seatNumber + " not found.")))
                 .collect(Collectors.toList());
 
-        for (SeatDTO seat : seatsToBook) {
-            if (!seat.getIsAvailable()) {
-                throw new SeatUnavailableException("Seat number " + seat.getSeatNumber() + " is unavailable.");
-            }
-        }
+        /**
+         * CHECK SEAT IS AVAILABLE
+         */
+        checkSeatIsAvailable(seatsToBook);
 
-        List<Ticket> tickets = seatsToBook.stream().map(s -> {
-            Ticket ticket = new Ticket();
-            ticket.setTicketClass(s.getType());
-            ticket.setSeatNumber(s.getSeatNumber());
-            ticket.setPrice(s.getPrice());
-            return ticket;
-        }).toList();
+
+        /**
+         * CREATE TICKET FROM SEAT AVAILABLE
+         */
+        List<Ticket> tickets = getTickets(seatsToBook);
 
         booking.setUserId(user.getId());
         booking.setPaymentId(System.currentTimeMillis() + UUID.randomUUID().toString());
@@ -84,28 +81,22 @@ public class BookingServiceImpl implements BookingService {
 
         Booking result = bookingRepository.save(booking);
 
-
         BookingDTO resultDTO = bookingMapper.toDTO(result);
         resultDTO.setPaymentMethod(request.getPaymentMethod());
 
         queue.sendMessage(resultDTO, "test-booking");
-
         return result;
     }
 
     @Override
     public BookingWithPaymentResponse getBookingById(String bookingId) {
 
-        ResponseEntity<PaymentDTO> response = paymentClient.getPaymentByBookingId(bookingId);
-
-        PaymentDTO payment = response.getBody();
+        PaymentDTO payment = getPayment(bookingId);
 
         Booking booking = bookingRepository.findById(bookingId).orElseThrow(() -> new RuntimeException("Booking not " +
                 "found with ID: " + bookingId));
 
-        ResponseEntity<List<UserDTO>> response2 = userClient.getAllUsers(Set.of(booking.getUserId()));
-
-        UserDTO user = response2.getBody().get(0);
+        UserDTO user = getUser(booking);
 
         BookingWithPaymentResponse bookingWithPaymentResponse = new BookingWithPaymentResponse(booking, payment, user);
 
@@ -203,5 +194,35 @@ public class BookingServiceImpl implements BookingService {
     public FlightDTO fallbackGetFlightByFlightId(Throwable throwable) {
         log.error("fallbackGetFlightByFlightId() --> {}", throwable.getMessage());
         throw new FlightNotFoundException("Can't get flight information.");
+    }
+
+
+    private List<Ticket> getTickets(List<SeatDTO> seatsToBook) {
+        return seatsToBook.stream().map(s -> {
+            Ticket ticket = new Ticket();
+            ticket.setTicketClass(s.getType());
+            ticket.setSeatNumber(s.getSeatNumber());
+            ticket.setPrice(s.getPrice());
+            return ticket;
+        }).toList();
+    }
+
+    private void checkSeatIsAvailable(List<SeatDTO> seatsToBook) {
+        for (SeatDTO seat : seatsToBook) {
+            if (!seat.getIsAvailable()) {
+                throw new SeatUnavailableException("Seat number " + seat.getSeatNumber() + " is unavailable.");
+            }
+        }
+    }
+
+    private UserDTO getUser(Booking booking) {
+        ResponseEntity<List<UserDTO>> response2 = userClient.getAllUsers(Set.of(booking.getUserId()));
+        UserDTO user = response2.getBody().get(0);
+        return user;
+    }
+
+    private PaymentDTO getPayment(String bookingId) {
+        PaymentDTO payment = paymentClient.getPaymentByBookingId(bookingId).getBody();
+        return payment;
     }
 }
