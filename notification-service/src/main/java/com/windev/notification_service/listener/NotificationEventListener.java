@@ -2,10 +2,7 @@ package com.windev.notification_service.listener;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.windev.notification_service.client.UserClient;
-import com.windev.notification_service.dto.BookingEvent;
-import com.windev.notification_service.dto.EventMessage;
-import com.windev.notification_service.dto.PaymentEventDTO;
-import com.windev.notification_service.dto.UserDTO;
+import com.windev.notification_service.dto.*;
 import com.windev.notification_service.service.EmailService;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
@@ -23,7 +20,11 @@ public class NotificationEventListener {
     private final UserClient userClient;
     private final EmailService emailService;
 
-    @KafkaListener(topics = "booking-topic", groupId = "${spring.kafka.consumer.group-id}")
+    private static final String BOOKING_TOPIC = "booking-topic";
+    private static final String USER_TOPIC = "user-topic";
+    private static final String PAYMENT_TOPIC = "payment-topic";
+
+    @KafkaListener(topics = BOOKING_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
     public void handleBookingEvent(@Payload String message) {
         try {
             EventMessage eventMessage = objectMapper.readValue(message, EventMessage.class);
@@ -47,7 +48,7 @@ public class NotificationEventListener {
         }
     }
 
-    @KafkaListener(topics = "payment-topic", groupId = "${spring.kafka.consumer.group-id}")
+    @KafkaListener(topics = PAYMENT_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
     public void handlePaymentEvent(@Payload String message) {
         try {
             EventMessage eventMessage = objectMapper.readValue(message, EventMessage.class);
@@ -66,6 +67,38 @@ public class NotificationEventListener {
                         "Booking Reservation Confirmation "
                                 + (eventMessage.getEventType().equals("payment-success") ? "SUCCESS" : "FAILED") +
                                 "!!!");
+            }
+        } catch (Exception e) {
+            log.error("handlePaymentEvent() --> Error handling event: {}", e.getMessage());
+        }
+    }
+
+    @KafkaListener(topics = USER_TOPIC, groupId = "${spring.kafka.consumer.group-id}")
+    public void handleUserEvent(@Payload String message) {
+        try {
+            EventMessage eventMessage = objectMapper.readValue(message, EventMessage.class);
+
+            UserEvent user = objectMapper.convertValue(eventMessage.getData(), UserEvent.class);
+            log.info("handlePaymentEvent() --> received data: {}", user.toString());
+
+            switch (eventMessage.getEventType()) {
+                case "USER-REGISTERED":
+                    String linkVerify = "http://localhost:8080/api/v1/auth/verify-email/" + user.getToken();
+                    emailService.sendEmailHtml(user.getEmail(),
+                            "Verify account",
+                            "Link verify: " + linkVerify
+                    );
+                    break;
+                case "FORGOT_PASSWORD":
+                    String linkResetPassword = "http://localhost:3000/account/forgot-password/" + user.getToken();
+                    emailService.sendEmailHtml(user.getEmail(),
+                            "Forgot password",
+                            "Link reset password: " + linkResetPassword
+                    );
+                    break;
+                default:
+                    log.error("Event not match!!!");
+
             }
         } catch (Exception e) {
             log.error("handlePaymentEvent() --> Error handling event: {}", e.getMessage());
