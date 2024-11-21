@@ -2,6 +2,8 @@ package com.windev.user_service.service.impl;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.windev.user_service.event.PasswordForgotEvent;
+import com.windev.user_service.event.UserRegisteredEvent;
 import com.windev.user_service.model.User;
 import com.windev.user_service.payload.response.EventMessage;
 import com.windev.user_service.service.KafkaService;
@@ -20,26 +22,42 @@ public class KafkaServiceImpl implements KafkaService {
 
     private final ObjectMapper objectMapper;
 
-    @Value("${spring.kafka.notification.topic}")
-    private String NOTIFICATION_TOPIC;
+    @Value("${spring.kafka.user.topic}")
+    private String USER_TOPIC;
 
     @Override
     /**
      * Use kafkaTemplate to send event to notification
      */
-    public void sendMessage(User user, String eventType){
+    public void sendUserRegisteredMessage(UserRegisteredEvent event, String eventType) {
         EventMessage message = EventMessage.builder()
-                .data(user)
+                .data(event)
                 .eventType(eventType)
                 .build();
 
         try {
             String eventAsString = objectMapper.writeValueAsString(message);
-            kafkaTemplate.send(NOTIFICATION_TOPIC, eventAsString);
-            log.info("kafkaTemplate --> send event {} to {} successfully", eventType, NOTIFICATION_TOPIC);
+            kafkaTemplate.send(USER_TOPIC, eventAsString);
+            log.info("kafkaTemplate --> send user registered event {} to {} successfully", eventType, USER_TOPIC);
         } catch (JsonProcessingException e) {
             log.error("failed to json processing: {}", e.getMessage());
             throw new RuntimeException(e);
+        }
+    }
+
+    @Override
+    public void sendPasswordForgotMessage(PasswordForgotEvent event, String eventType) {
+        EventMessage message = EventMessage.builder()
+                .data(event)
+                .eventType(eventType)
+                .build();
+
+        try {
+            String eventAsString = objectMapper.writeValueAsString(message);
+            kafkaTemplate.send(USER_TOPIC, eventAsString);
+            log.info("kafkaTemplate --> send password forgot event {} to {} successfully", eventType, USER_TOPIC);
+        } catch (JsonProcessingException e) {
+            log.error("failed to json processing: {}", e.getMessage());
         }
     }
 }

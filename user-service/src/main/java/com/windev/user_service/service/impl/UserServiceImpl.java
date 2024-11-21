@@ -3,6 +3,7 @@ package com.windev.user_service.service.impl;
 import com.windev.user_service.dto.UserDTO;
 import com.windev.user_service.dto.UserProfileDTO;
 import com.windev.user_service.enums.EventType;
+import com.windev.user_service.event.PasswordForgotEvent;
 import com.windev.user_service.exception.AuthorityNotFoundException;
 import com.windev.user_service.exception.UserNotFoundException;
 import com.windev.user_service.mapper.UserMapper;
@@ -157,7 +158,9 @@ public class UserServiceImpl implements UserService {
 
         forgotPasswordTokenRepository.save(forgotPasswordToken);
 
-        kafkaService.sendMessage(existingUser, EventType.FORGOT_PASSWORD.name());
+
+        PasswordForgotEvent event = new PasswordForgotEvent(existingUser.getEmail(), token);
+        kafkaService.sendPasswordForgotMessage(event, EventType.FORGOT_PASSWORD.name());
 
         log.info("forgotPasswordRequest() --> a link to reset your password has been sent to your email: {}", email);
     }

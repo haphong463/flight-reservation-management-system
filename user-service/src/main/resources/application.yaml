@@ -15,8 +15,8 @@ spring:
     serialization:
       write-dates-as-timestamps: false
   kafka:
-    notification:
-      topic: notification-topic
+    user:
+      topic: user-topic
     bootstrap-servers: localhost:29092
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

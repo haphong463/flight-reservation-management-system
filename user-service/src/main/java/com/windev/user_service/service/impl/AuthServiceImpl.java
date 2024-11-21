@@ -3,6 +3,7 @@ package com.windev.user_service.service.impl;
 import com.windev.user_service.dto.UserDTO;
 import com.windev.user_service.dto.UserProfileDTO;
 import com.windev.user_service.enums.EventType;
+import com.windev.user_service.event.UserRegisteredEvent;
 import com.windev.user_service.mapper.UserMapper;
 import com.windev.user_service.model.*;
 import com.windev.user_service.payload.request.auth.SigninRequest;
@@ -106,7 +107,8 @@ public class AuthServiceImpl implements AuthService {
         /**
          * Send user-registered event to notification topic
          */
-        kafkaService.sendMessage(createdUser, EventType.USER_REGISTERED.name());
+        UserRegisteredEvent event = new UserRegisteredEvent(user.getEmail(), token);
+        kafkaService.sendUserRegisteredMessage(event, EventType.USER_REGISTERED.name());
 
         return userMapper.toUserRegisteredResponse(createdUser);
     }
